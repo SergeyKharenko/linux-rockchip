@@ -306,10 +306,6 @@
 	cpu-supply = <&vdd_cpu>;
 };
 
-&crypto {
-        status = "okay";
-};
-
 &dfi {
 	status = "okay";
 };
@@ -412,10 +408,6 @@
 
 		pwrkey {
 			status = "okay";
-		};
-
-		rtc {
-			status = "disabled";
 		};
 
 		pinctrl_rk8xx: pinctrl_rk8xx {
@@ -767,6 +759,26 @@
 	vqmmc-supply = <&vccio_sd>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc0_bus4 &sdmmc0_clk &sdmmc0_cmd &sdmmc0_det>;
+	status = "okay";
+};
+
+&sdmmc2 {
+	max-frequency = <150000000>;
+	supports-sdio;
+	bus-width = <4>;
+	disable-wp;
+	cap-sd-highspeed;
+	cap-sdio-irq;
+	keep-power-in-suspend;
+	mmc-pwrseq = <&sdio_pwrseq>;
+	non-removable;
+	pinctrl-names = "default";
+	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_cmd &sdmmc2m0_clk>;
+	sd-uhs-sdr104;
+	status = "okay";
+};
+
+&sfc {
 	status = "okay";
 };
 
