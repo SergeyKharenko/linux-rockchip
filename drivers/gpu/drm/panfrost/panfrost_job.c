@@ -822,7 +822,13 @@ int panfrost_job_init(struct panfrost_device *pfdev)
 	for (j = 0; j < NUM_JOB_SLOTS; j++) {
 		js->queue[j].fence_context = dma_fence_context_alloc(1);
 
-		ret = drm_sched_init(&js->queue[j].sched, &args);
+		ret = drm_sched_init(&js->queue[j].sched,
+				     &panfrost_sched_ops, NULL,
+				     DRM_SCHED_PRIORITY_COUNT,
+				     nentries, 0,
+				     msecs_to_jiffies(JOB_TIMEOUT_MS),
+				     pfdev->reset.wq,
+				     NULL, "pan_js", pfdev->dev);
 		if (ret) {
 			dev_err(pfdev->dev, "Failed to create scheduler: %d.", ret);
 			goto err_sched;

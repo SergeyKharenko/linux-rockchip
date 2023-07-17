@@ -52,10 +52,23 @@
 
 enum dma_resv_usage;
 struct dma_resv;
+/**
+ * DRM_SCHED_FENCE_FLAG_HAS_DEADLINE_BIT - A fence deadline hint has been set
+ *
+ * Because we could have a deadline hint can be set before the backing hw
+ * fence is created, we need to keep track of whether a deadline has already
+ * been set.
+ */
+#define DRM_SCHED_FENCE_FLAG_HAS_DEADLINE_BIT	(DMA_FENCE_FLAG_USER_BITS + 1)
+
+enum dma_resv_usage;
+struct dma_resv;
 struct drm_gem_object;
 
 struct drm_gpu_scheduler;
 struct drm_sched_rq;
+
+struct drm_file;
 
 struct drm_file;
 
@@ -65,11 +78,20 @@ struct drm_file;
 enum drm_sched_priority {
 	DRM_SCHED_PRIORITY_KERNEL,
 	DRM_SCHED_PRIORITY_HIGH,
+	DRM_SCHED_PRIORITY_KERNEL,
+	DRM_SCHED_PRIORITY_HIGH,
 	DRM_SCHED_PRIORITY_NORMAL,
+	DRM_SCHED_PRIORITY_LOW,
 	DRM_SCHED_PRIORITY_LOW,
 
 	DRM_SCHED_PRIORITY_COUNT
 };
+
+/* Used to chose between FIFO and RR jobs scheduling */
+extern int drm_sched_policy;
+
+#define DRM_SCHED_POLICY_RR    0
+#define DRM_SCHED_POLICY_FIFO  1
 
 /**
  * struct drm_sched_entity - A wrapper around a job queue (typically
@@ -196,6 +218,7 @@ struct drm_sched_entity {
 	 * drm_sched_job_arm() if the queue is empty.
 	 */
 	struct dma_fence __rcu		*last_scheduled;
+	struct dma_fence __rcu		*last_scheduled;
 
 	/**
 	 * @last_user: last group leader pushing a job into the entity.
@@ -233,6 +256,21 @@ struct drm_sched_entity {
 	 */
 	struct rb_node			rb_tree_node;
 
+
+	/**
+	 * @oldest_job_waiting:
+	 *
+	 * Marks earliest job waiting in SW queue
+	 */
+	ktime_t				oldest_job_waiting;
+
+	/**
+	 * @rb_tree_node:
+	 *
+	 * The node used to insert this entity into time based priority queue
+	 */
+	struct rb_node			rb_tree_node;
+
 };
 
 /**
@@ -242,7 +280,7 @@ struct drm_sched_entity {
  * @sched: the scheduler to which this rq belongs to.
  * @entities: list of the entities to be scheduled.
  * @current_entity: the entity which is to be scheduled.
- * @rb_tree_root: root of time based priority queue of entities for FIFO scheduling
+ * @rb_tree_root: root of time based priory queue of entities for FIFO scheduling
  *
  * Run queue is a set of entities scheduling command submissions for
  * one specific ring. It implements the scheduling policy that selects
@@ -253,6 +291,7 @@ struct drm_sched_rq {
 	struct drm_gpu_scheduler	*sched;
 	struct list_head		entities;
 	struct drm_sched_entity		*current_entity;
+	struct rb_root_cached		rb_tree_root;
 	struct rb_root_cached		rb_tree_root;
 };
 
@@ -277,6 +316,12 @@ struct drm_sched_fence {
          * resolved.
          */
 	struct dma_fence		finished;
+
+	/**
+	 * @deadline: deadline set on &drm_sched_fence.finished which
+	 * potentially needs to be propagated to &drm_sched_fence.parent
+	 */
+	ktime_t				deadline;
 
 	/**
 	 * @deadline: deadline set on &drm_sched_fence.finished which
@@ -323,7 +368,8 @@ struct drm_sched_fence *to_drm_sched_fence(struct dma_fence *f);
  * @s_fence: contains the fences for the scheduling of job.
  * @finish_cb: the callback for the finished fence.
  * @credits: the number of credits this job contributes to the scheduler
- * @work: Helper to reschedule job kill to different context.
+ * @work: Helper to reschdeule job kill to different context.
+ * @id: a unique id assigned to each job scheduled on the scheduler.
  * @karma: increment on every hang caused by this job. If this exceeds the hang
  *         limit of the scheduler then the job is marked guilty and will not
  *         be scheduled further.
@@ -364,13 +410,16 @@ struct drm_sched_job {
 	struct spsc_node		queue_node;
 	struct list_head		list;
 
+	u32				credits;
+
 	/*
 	 * work is used only after finish_cb has been used and will not be
 	 * accessed anymore.
 	 */
 	union {
-		struct dma_fence_cb	finish_cb;
-		struct work_struct	work;
+		struct dma_fence_cb		finish_cb;
+		struct work_struct		work;
+		struct work_struct		work;
 	};
 
 	struct dma_fence_cb		cb;
@@ -383,6 +432,23 @@ struct drm_sched_job {
 	 * drm_sched_job_add_implicit_dependencies().
 	 */
 	struct xarray			dependencies;
+
+	/** @last_dependency: tracks @dependencies as they signal */
+	unsigned long			last_dependency;
+
+	/**
+	 * @submit_ts:
+	 *
+	 * When the job was pushed into the entity queue.
+	 */
+	ktime_t                         submit_ts;
+
+	/**
+	 * @submit_ts:
+	 *
+	 * When the job was pushed into the entity queue.
+	 */
+	ktime_t                         submit_ts;
 };
 
 static inline bool drm_sched_invalidate_job(struct drm_sched_job *s_job,
@@ -407,6 +473,7 @@ enum drm_gpu_sched_stat {
 struct drm_sched_backend_ops {
 	/**
 	 * @prepare_job:
+	 * @prepare_job:
 	 *
 	 * Called when the scheduler is considering scheduling this job next, to
 	 * get another struct dma_fence for this job to block on.  Once it
@@ -414,7 +481,11 @@ struct drm_sched_backend_ops {
 	 *
 	 * Can be NULL if no additional preparation to the dependencies are
 	 * necessary. Skipped when jobs are killed instead of run.
+	 * Can be NULL if no additional preparation to the dependencies are
+	 * necessary. Skipped when jobs are killed instead of run.
 	 */
+	struct dma_fence *(*prepare_job)(struct drm_sched_job *sched_job,
+					 struct drm_sched_entity *s_entity);
 	struct dma_fence *(*prepare_job)(struct drm_sched_job *sched_job,
 					 struct drm_sched_entity *s_entity);
 
@@ -477,22 +548,17 @@ struct drm_sched_backend_ops {
 	void (*free_job)(struct drm_sched_job *sched_job);
 
 	/**
-	 * @cancel_job: Used by the scheduler to guarantee remaining jobs' fences
-	 * get signaled in drm_sched_fini().
+	 * @update_job_credits: Called when the scheduler is considering this
+	 * job for execution.
 	 *
-	 * Used by the scheduler to cancel all jobs that have not been executed
-	 * with &struct drm_sched_backend_ops.run_job by the time
-	 * drm_sched_fini() gets invoked.
+	 * This callback returns the number of credits the job would take if
+	 * pushed to the hardware. Drivers may use this to dynamically update
+	 * the job's credit count. For instance, deduct the number of credits
+	 * for already signalled native fences.
 	 *
-	 * Drivers need to signal the passed job's hardware fence with an
-	 * appropriate error code (e.g., -ECANCELED) in this callback. They
-	 * must not free the job.
-	 *
-	 * The scheduler will only call this callback once it stopped calling
-	 * all other callbacks forever, with the exception of &struct
-	 * drm_sched_backend_ops.free_job.
+	 * This callback is optional.
 	 */
-	void (*cancel_job)(struct drm_sched_job *sched_job);
+	u32 (*update_job_credits)(struct drm_sched_job *sched_job);
 };
 
 /**
@@ -501,8 +567,13 @@ struct drm_sched_backend_ops {
  * @ops: backend operations provided by the driver.
  * @credit_limit: the credit limit of this scheduler
  * @credit_count: the current credit count of this scheduler
+ * @credit_limit: the credit limit of this scheduler
+ * @credit_count: the current credit count of this scheduler
  * @timeout: the time after which a job is removed from the scheduler.
  * @name: name of the ring for which this scheduler is being used.
+ * @num_rqs: Number of run-queues. This is at most DRM_SCHED_PRIORITY_COUNT,
+ *           as there's usually one run-queue per priority, but could be less.
+ * @sched_rq: An allocated array of run-queues of size @num_rqs;
  * @num_rqs: Number of run-queues. This is at most DRM_SCHED_PRIORITY_COUNT,
  *           as there's usually one run-queue per priority, but could be less.
  * @sched_rq: An allocated array of run-queues of size @num_rqs;
@@ -511,7 +582,10 @@ struct drm_sched_backend_ops {
  *                 finished.
  * @job_id_count: used to assign unique id to the each job.
  * @submit_wq: workqueue used to queue @work_run_job and @work_free_job
+ * @submit_wq: workqueue used to queue @work_run_job and @work_free_job
  * @timeout_wq: workqueue used to queue @work_tdr
+ * @work_run_job: work which calls run_job op of each scheduler.
+ * @work_free_job: work which calls free_job op of each scheduler.
  * @work_run_job: work which calls run_job op of each scheduler.
  * @work_free_job: work which calls free_job op of each scheduler.
  * @work_tdr: schedules a delayed call to @drm_sched_job_timedout after the
@@ -526,6 +600,8 @@ struct drm_sched_backend_ops {
  * @free_guilty: A hit to time out handler to free the guilty job.
  * @pause_submit: pause queuing of @work_run_job on @submit_wq
  * @own_submit_wq: scheduler owns allocation of @submit_wq
+ * @pause_submit: pause queuing of @work_run_job on @submit_wq
+ * @own_submit_wq: scheduler owns allocation of @submit_wq
  * @dev: system &struct device
  *
  * One scheduler is implemented for each hardware ring.
@@ -534,14 +610,21 @@ struct drm_gpu_scheduler {
 	const struct drm_sched_backend_ops	*ops;
 	u32				credit_limit;
 	atomic_t			credit_count;
+	u32				credit_limit;
+	atomic_t			credit_count;
 	long				timeout;
 	const char			*name;
+	u32                             num_rqs;
+	struct drm_sched_rq             **sched_rq;
 	u32                             num_rqs;
 	struct drm_sched_rq             **sched_rq;
 	wait_queue_head_t		job_scheduled;
 	atomic64_t			job_id_count;
 	struct workqueue_struct		*submit_wq;
+	struct workqueue_struct		*submit_wq;
 	struct workqueue_struct		*timeout_wq;
+	struct work_struct		work_run_job;
+	struct work_struct		work_free_job;
 	struct work_struct		work_run_job;
 	struct work_struct		work_free_job;
 	struct delayed_work		work_tdr;
@@ -552,6 +635,8 @@ struct drm_gpu_scheduler {
 	atomic_t                        _score;
 	bool				ready;
 	bool				free_guilty;
+	bool				pause_submit;
+	bool				own_submit_wq;
 	bool				pause_submit;
 	bool				own_submit_wq;
 	struct device			*dev;
@@ -588,16 +673,27 @@ struct drm_sched_init_args {
 };
 
 int drm_sched_init(struct drm_gpu_scheduler *sched,
-		   const struct drm_sched_init_args *args);
+		   const struct drm_sched_backend_ops *ops,
+		   struct workqueue_struct *submit_wq,
+		   u32 num_rqs, u32 credit_limit, unsigned int hang_limit,
+		   long timeout, struct workqueue_struct *timeout_wq,
+		   atomic_t *score, const char *name, struct device *dev);
 
 void drm_sched_fini(struct drm_gpu_scheduler *sched);
 int drm_sched_job_init(struct drm_sched_job *job,
 		       struct drm_sched_entity *entity,
-		       u32 credits, void *owner,
-		       u64 drm_client_id);
+		       u32 credits, void *owner);
+		       u32 credits, void *owner);
 void drm_sched_job_arm(struct drm_sched_job *job);
 int drm_sched_job_add_dependency(struct drm_sched_job *job,
 				 struct dma_fence *fence);
+int drm_sched_job_add_syncobj_dependency(struct drm_sched_job *job,
+					 struct drm_file *file,
+					 u32 handle,
+					 u32 point);
+int drm_sched_job_add_resv_dependencies(struct drm_sched_job *job,
+					struct dma_resv *resv,
+					enum dma_resv_usage usage);
 int drm_sched_job_add_syncobj_dependency(struct drm_sched_job *job,
 					 struct drm_file *file,
 					 u32 handle,
@@ -616,7 +712,9 @@ void drm_sched_entity_modify_sched(struct drm_sched_entity *entity,
                                    unsigned int num_sched_list);
 
 void drm_sched_tdr_queue_imm(struct drm_gpu_scheduler *sched);
+void drm_sched_tdr_queue_imm(struct drm_gpu_scheduler *sched);
 void drm_sched_job_cleanup(struct drm_sched_job *job);
+void drm_sched_wakeup(struct drm_gpu_scheduler *sched, struct drm_sched_entity *entity);
 bool drm_sched_wqueue_ready(struct drm_gpu_scheduler *sched);
 void drm_sched_wqueue_stop(struct drm_gpu_scheduler *sched);
 void drm_sched_wqueue_start(struct drm_gpu_scheduler *sched);
@@ -626,6 +724,13 @@ void drm_sched_resubmit_jobs(struct drm_gpu_scheduler *sched);
 void drm_sched_increase_karma(struct drm_sched_job *bad);
 void drm_sched_fault(struct drm_gpu_scheduler *sched);
 void drm_sched_job_kickout(struct drm_sched_job *s_job);
+
+void drm_sched_rq_add_entity(struct drm_sched_rq *rq,
+			     struct drm_sched_entity *entity);
+void drm_sched_rq_remove_entity(struct drm_sched_rq *rq,
+				struct drm_sched_entity *entity);
+
+void drm_sched_rq_update_fifo(struct drm_sched_entity *entity, ktime_t ts);
 
 int drm_sched_entity_init(struct drm_sched_entity *entity,
 			  enum drm_sched_priority priority,
@@ -638,7 +743,18 @@ void drm_sched_entity_destroy(struct drm_sched_entity *entity);
 void drm_sched_entity_push_job(struct drm_sched_job *sched_job);
 void drm_sched_entity_set_priority(struct drm_sched_entity *entity,
 				   enum drm_sched_priority priority);
+bool drm_sched_entity_is_ready(struct drm_sched_entity *entity);
 int drm_sched_entity_error(struct drm_sched_entity *entity);
+
+struct drm_sched_fence *drm_sched_fence_alloc(
+	struct drm_sched_entity *s_entity, void *owner);
+void drm_sched_fence_init(struct drm_sched_fence *fence,
+			  struct drm_sched_entity *entity);
+void drm_sched_fence_free(struct drm_sched_fence *fence);
+
+void drm_sched_fence_scheduled(struct drm_sched_fence *fence,
+			       struct dma_fence *parent);
+void drm_sched_fence_finished(struct drm_sched_fence *fence, int result);
 
 unsigned long drm_sched_suspend_timeout(struct drm_gpu_scheduler *sched);
 void drm_sched_resume_timeout(struct drm_gpu_scheduler *sched,

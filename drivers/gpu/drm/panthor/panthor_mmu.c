@@ -52,27 +52,26 @@ struct panthor_mmu {
 	/** @irq: The MMU irq. */
 	struct panthor_irq irq;
 
-	/**
-	 * @as: Address space related fields.
+	/** @as: Address space related fields.
 	 *
 	 * The GPU has a limited number of address spaces (AS) slots, forcing
 	 * us to re-assign them to re-assign slots on-demand.
 	 */
 	struct {
-		/** @as.slots_lock: Lock protecting access to all other AS fields. */
+		/** @slots_lock: Lock protecting access to all other AS fields. */
 		struct mutex slots_lock;
 
-		/** @as.alloc_mask: Bitmask encoding the allocated slots. */
+		/** @alloc_mask: Bitmask encoding the allocated slots. */
 		unsigned long alloc_mask;
 
-		/** @as.faulty_mask: Bitmask encoding the faulty slots. */
+		/** @faulty_mask: Bitmask encoding the faulty slots. */
 		unsigned long faulty_mask;
 
-		/** @as.slots: VMs currently bound to the AS slots. */
+		/** @slots: VMs currently bound to the AS slots. */
 		struct panthor_as_slot slots[MAX_AS_SLOTS];
 
 		/**
-		 * @as.lru_list: List of least recently used VMs.
+		 * @lru_list: List of least recently used VMs.
 		 *
 		 * We use this list to pick a VM to evict when all slots are
 		 * used.
@@ -87,16 +86,16 @@ struct panthor_mmu {
 
 	/** @vm: VMs management fields */
 	struct {
-		/** @vm.lock: Lock protecting access to list. */
+		/** @lock: Lock protecting access to list. */
 		struct mutex lock;
 
-		/** @vm.list: List containing all VMs. */
+		/** @list: List containing all VMs. */
 		struct list_head list;
 
-		/** @vm.reset_in_progress: True if a reset is in progress. */
+		/** @reset_in_progress: True if a reset is in progress. */
 		bool reset_in_progress;
 
-		/** @vm.wq: Workqueue used for the VM_BIND queues. */
+		/** @wq: Workqueue used for the VM_BIND queues. */
 		struct workqueue_struct *wq;
 	} vm;
 };
@@ -143,14 +142,14 @@ struct panthor_vma {
 struct panthor_vm_op_ctx {
 	/** @rsvd_page_tables: Pages reserved for the MMU page table update. */
 	struct {
-		/** @rsvd_page_tables.count: Number of pages reserved. */
+		/** @count: Number of pages reserved. */
 		u32 count;
 
-		/** @rsvd_page_tables.ptr: Point to the first unused page in the @pages table. */
+		/** @ptr: Point to the first unused page in the @pages table. */
 		u32 ptr;
 
 		/**
-		 * @rsvd_page_tables.pages: Array of pages to be used for an MMU page table update.
+		 * @page: Array of pages that can be used for an MMU page table update.
 		 *
 		 * After an VM operation, there might be free pages left in this array.
 		 * They should be returned to the pt_cache as part of the op_ctx cleanup.
@@ -172,10 +171,10 @@ struct panthor_vm_op_ctx {
 
 	/** @va: Virtual range targeted by the VM operation. */
 	struct {
-		/** @va.addr: Start address. */
+		/** @addr: Start address. */
 		u64 addr;
 
-		/** @va.range: Range size. */
+		/** @range: Range size. */
 		u64 range;
 	} va;
 
@@ -195,14 +194,14 @@ struct panthor_vm_op_ctx {
 
 	/** @map: Fields specific to a map operation. */
 	struct {
-		/** @map.vm_bo: Buffer object to map. */
+		/** @vm_bo: Buffer object to map. */
 		struct drm_gpuvm_bo *vm_bo;
 
-		/** @map.bo_offset: Offset in the buffer object. */
+		/** @bo_offset: Offset in the buffer object. */
 		u64 bo_offset;
 
 		/**
-		 * @map.sgt: sg-table pointing to pages backing the GEM object.
+		 * @sgt: sg-table pointing to pages backing the GEM object.
 		 *
 		 * This is gathered at job creation time, such that we don't have
 		 * to allocate in ::run_job().
@@ -210,7 +209,7 @@ struct panthor_vm_op_ctx {
 		struct sg_table *sgt;
 
 		/**
-		 * @map.new_vma: The new VMA object that will be inserted to the VA tree.
+		 * @new_vma: The new VMA object that will be inserted to the VA tree.
 		 */
 		struct panthor_vma *new_vma;
 	} map;
@@ -304,27 +303,27 @@ struct panthor_vm {
 
 	/** @kernel_auto_va: Automatic VA-range for kernel BOs. */
 	struct {
-		/** @kernel_auto_va.start: Start of the automatic VA-range for kernel BOs. */
+		/** @start: Start of the automatic VA-range for kernel BOs. */
 		u64 start;
 
-		/** @kernel_auto_va.size: Size of the automatic VA-range for kernel BOs. */
+		/** @size: Size of the automatic VA-range for kernel BOs. */
 		u64 end;
 	} kernel_auto_va;
 
 	/** @as: Address space related fields. */
 	struct {
 		/**
-		 * @as.id: ID of the address space this VM is bound to.
+		 * @id: ID of the address space this VM is bound to.
 		 *
 		 * A value of -1 means the VM is inactive/not bound.
 		 */
 		int id;
 
-		/** @as.active_cnt: Number of active users of this VM. */
+		/** @active_cnt: Number of active users of this VM. */
 		refcount_t active_cnt;
 
 		/**
-		 * @as.lru_node: Used to instead the VM in the panthor_mmu::as::lru_list.
+		 * @lru_node: Used to instead the VM in the panthor_mmu::as::lru_list.
 		 *
 		 * Active VMs should not be inserted in the LRU list.
 		 */
@@ -336,13 +335,13 @@ struct panthor_vm {
 	 */
 	struct {
 		/**
-		 * @heaps.pool: The heap pool attached to this VM.
+		 * @pool: The heap pool attached to this VM.
 		 *
 		 * Will stay NULL until someone creates a heap context on this VM.
 		 */
 		struct panthor_heap_pool *pool;
 
-		/** @heaps.lock: Lock used to protect access to @pool. */
+		/** @lock: Lock used to protect access to @pool. */
 		struct mutex lock;
 	} heaps;
 
@@ -408,7 +407,7 @@ struct panthor_vm_bind_job {
 	struct panthor_vm_op_ctx ctx;
 };
 
-/*
+/**
  * @pt_cache: Cache used to allocate MMU page tables.
  *
  * The pre-allocation pattern forces us to over-allocate to plan for
@@ -478,7 +477,7 @@ static void *alloc_pt(void *cookie, size_t size, gfp_t gfp)
 }
 
 /**
- * free_pt() - Custom page table free function
+ * @free_pt() - Custom page table free function
  * @cookie: Cookie passed at page table allocation time.
  * @data: Page table to free.
  * @size: Size of the page table. This size should be fixed,
@@ -574,12 +573,6 @@ static int mmu_hw_do_operation_locked(struct panthor_device *ptdev, int as_nr,
 
 	if (as_nr < 0)
 		return 0;
-
-	/*
-	 * If the AS number is greater than zero, then we can be sure
-	 * the device is up and running, so we don't need to explicitly
-	 * power it up
-	 */
 
 	if (op != AS_COMMAND_UNLOCK)
 		lock_region(ptdev, as_nr, iova, size);
@@ -686,7 +679,7 @@ static void panthor_vm_release_as_locked(struct panthor_vm *vm)
 
 /**
  * panthor_vm_active() - Flag a VM as active
- * @vm: VM to flag as active.
+ * @VM: VM to flag as active.
  *
  * Assigns an address space to a VM so it can be used by the GPU/MCU.
  *
@@ -790,7 +783,7 @@ out_dev_exit:
 
 /**
  * panthor_vm_idle() - Flag a VM idle
- * @vm: VM to flag as idle.
+ * @VM: VM to flag as idle.
  *
  * When we know the GPU is done with the VM (no more jobs to process),
  * we can relinquish the AS slot attached to this VM, if any.
@@ -815,14 +808,6 @@ void panthor_vm_idle(struct panthor_vm *vm)
 	mutex_unlock(&ptdev->mmu->as.slots_lock);
 }
 
-u32 panthor_vm_page_size(struct panthor_vm *vm)
-{
-	const struct io_pgtable *pgt = io_pgtable_ops_to_pgtable(vm->pgtbl_ops);
-	u32 pg_shift = ffs(pgt->cfg.pgsize_bitmap) - 1;
-
-	return 1u << pg_shift;
-}
-
 static void panthor_vm_stop(struct panthor_vm *vm)
 {
 	drm_sched_stop(&vm->sched, NULL);
@@ -830,7 +815,7 @@ static void panthor_vm_stop(struct panthor_vm *vm)
 
 static void panthor_vm_start(struct panthor_vm *vm)
 {
-	drm_sched_start(&vm->sched, 0);
+	drm_sched_start(&vm->sched, true);
 }
 
 /**
@@ -877,7 +862,9 @@ static int panthor_vm_flush_range(struct panthor_vm *vm, u64 iova, u64 size)
 	if (!drm_dev_enter(&ptdev->base, &cookie))
 		return 0;
 
-	ret = mmu_hw_do_operation(vm, iova, size, AS_COMMAND_FLUSH_PT);
+	/* Flush the PTs only if we're already awake */
+	if (pm_runtime_active(ptdev->base.dev))
+		ret = mmu_hw_do_operation(vm, iova, size, AS_COMMAND_FLUSH_PT);
 
 	drm_dev_exit(cookie);
 	return ret;
@@ -968,8 +955,6 @@ panthor_vm_map_pages(struct panthor_vm *vm, u64 iova, int prot,
 
 		if (!size)
 			break;
-
-		offset = 0;
 	}
 
 	return panthor_vm_flush_range(vm, start_iova, iova - start_iova);
@@ -995,7 +980,7 @@ static int flags_to_prot(u32 flags)
 
 /**
  * panthor_vm_alloc_va() - Allocate a region in the auto-va space
- * @vm: VM to allocate a region on.
+ * @VM: VM to allocate a region on.
  * @va: start of the VA range. Can be PANTHOR_VM_KERNEL_AUTO_VA if the user
  * wants the VA to be automatically allocated from the auto-VA range.
  * @size: size of the VA range.
@@ -1013,13 +998,12 @@ int
 panthor_vm_alloc_va(struct panthor_vm *vm, u64 va, u64 size,
 		    struct drm_mm_node *va_node)
 {
-	ssize_t vm_pgsz = panthor_vm_page_size(vm);
 	int ret;
 
-	if (!size || !IS_ALIGNED(size, vm_pgsz))
+	if (!size || (size & ~PAGE_MASK))
 		return -EINVAL;
 
-	if (va != PANTHOR_VM_KERNEL_AUTO_VA && !IS_ALIGNED(va, vm_pgsz))
+	if (va != PANTHOR_VM_KERNEL_AUTO_VA && (va & ~PAGE_MASK))
 		return -EINVAL;
 
 	mutex_lock(&vm->mm_lock);
@@ -1041,7 +1025,7 @@ panthor_vm_alloc_va(struct panthor_vm *vm, u64 va, u64 size,
 
 /**
  * panthor_vm_free_va() - Free a region allocated with panthor_vm_alloc_va()
- * @vm: VM to free the region on.
+ * @VM: VM to free the region on.
  * @va_node: Memory node representing the region to free.
  */
 void panthor_vm_free_va(struct panthor_vm *vm, struct drm_mm_node *va_node)
@@ -1080,7 +1064,7 @@ static void panthor_vm_bo_put(struct drm_gpuvm_bo *vm_bo)
 	/* If the vm_bo object was destroyed, release the pin reference that
 	 * was hold by this object.
 	 */
-	if (unpin && !drm_gem_is_imported(&bo->base.base))
+	if (unpin && !bo->base.base.import_attach)
 		drm_gem_shmem_unpin(&bo->base);
 
 	drm_gpuvm_put(vm);
@@ -1211,7 +1195,7 @@ static int panthor_vm_prepare_map_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 	if (ret)
 		goto err_cleanup;
 
-	if (!drm_gem_is_imported(&bo->base.base)) {
+	if (!bo->base.base.import_attach) {
 		/* Pre-reserve the BO pages, so the map operation doesn't have to
 		 * allocate.
 		 */
@@ -1222,7 +1206,7 @@ static int panthor_vm_prepare_map_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 
 	sgt = drm_gem_shmem_get_pages_sgt(&bo->base);
 	if (IS_ERR(sgt)) {
-		if (!drm_gem_is_imported(&bo->base.base))
+		if (!bo->base.base.import_attach)
 			drm_gem_shmem_unpin(&bo->base);
 
 		ret = PTR_ERR(sgt);
@@ -1233,24 +1217,16 @@ static int panthor_vm_prepare_map_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 
 	preallocated_vm_bo = drm_gpuvm_bo_create(&vm->base, &bo->base.base);
 	if (!preallocated_vm_bo) {
-		if (!drm_gem_is_imported(&bo->base.base))
+		if (!bo->base.base.import_attach)
 			drm_gem_shmem_unpin(&bo->base);
 
 		ret = -ENOMEM;
 		goto err_cleanup;
 	}
 
-	/* drm_gpuvm_bo_obtain_prealloc() will call drm_gpuvm_bo_put() on our
-	 * pre-allocated BO if the <BO,VM> association exists. Given we
-	 * only have one ref on preallocated_vm_bo, drm_gpuvm_bo_destroy() will
-	 * be called immediately, and we have to hold the VM resv lock when
-	 * calling this function.
-	 */
-	dma_resv_lock(panthor_vm_resv(vm), NULL);
 	mutex_lock(&bo->gpuva_list_lock);
 	op_ctx->map.vm_bo = drm_gpuvm_bo_obtain_prealloc(preallocated_vm_bo);
 	mutex_unlock(&bo->gpuva_list_lock);
-	dma_resv_unlock(panthor_vm_resv(vm));
 
 	/* If the a vm_bo for this <VM,BO> combination exists, it already
 	 * retains a pin ref, and we can release the one we took earlier.
@@ -1259,7 +1235,7 @@ static int panthor_vm_prepare_map_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 	 * which will be released in panthor_vm_bo_put().
 	 */
 	if (preallocated_vm_bo != op_ctx->map.vm_bo &&
-	    !drm_gem_is_imported(&bo->base.base))
+	    !bo->base.base.import_attach)
 		drm_gem_shmem_unpin(&bo->base);
 
 	op_ctx->map.bo_offset = offset;
@@ -1276,10 +1252,8 @@ static int panthor_vm_prepare_map_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 	op_ctx->rsvd_page_tables.pages = kcalloc(pt_count,
 						 sizeof(*op_ctx->rsvd_page_tables.pages),
 						 GFP_KERNEL);
-	if (!op_ctx->rsvd_page_tables.pages) {
-		ret = -ENOMEM;
+	if (!op_ctx->rsvd_page_tables.pages)
 		goto err_cleanup;
-	}
 
 	ret = kmem_cache_alloc_bulk(pt_cache, GFP_KERNEL, pt_count,
 				    op_ctx->rsvd_page_tables.pages);
@@ -1332,10 +1306,8 @@ static int panthor_vm_prepare_unmap_op_ctx(struct panthor_vm_op_ctx *op_ctx,
 		op_ctx->rsvd_page_tables.pages = kcalloc(pt_count,
 							 sizeof(*op_ctx->rsvd_page_tables.pages),
 							 GFP_KERNEL);
-		if (!op_ctx->rsvd_page_tables.pages) {
-			ret = -ENOMEM;
+		if (!op_ctx->rsvd_page_tables.pages)
 			goto err_cleanup;
-		}
 
 		ret = kmem_cache_alloc_bulk(pt_cache, GFP_KERNEL, pt_count,
 					    op_ctx->rsvd_page_tables.pages);
@@ -1470,9 +1442,9 @@ panthor_vm_create_check_args(const struct panthor_device *ptdev,
 
 /**
  * panthor_vm_pool_create_vm() - Create a VM
- * @ptdev: The panthor device
  * @pool: The VM to create this VM on.
- * @args: VM creation args.
+ * @kernel_va_start: Start of the region reserved for kernel objects.
+ * @kernel_va_range: Size of the region reserved for kernel objects.
  *
  * Return: a positive VM ID on success, a negative error code otherwise.
  */
@@ -1536,8 +1508,6 @@ static void panthor_vm_destroy(struct panthor_vm *vm)
  *
  * The VM resources are freed when the last reference on the VM object is
  * dropped.
- *
- * Return: %0 for success, negative errno value for failure
  */
 int panthor_vm_pool_destroy_vm(struct panthor_vm_pool *pool, u32 handle)
 {
@@ -1562,9 +1532,7 @@ panthor_vm_pool_get_vm(struct panthor_vm_pool *pool, u32 handle)
 {
 	struct panthor_vm *vm;
 
-	xa_lock(&pool->xa);
 	vm = panthor_vm_get(xa_load(&pool->xa, handle));
-	xa_unlock(&pool->xa);
 
 	return vm;
 }
@@ -1912,42 +1880,13 @@ struct panthor_heap_pool *panthor_vm_get_heap_pool(struct panthor_vm *vm, bool c
 			vm->heaps.pool = panthor_heap_pool_get(pool);
 	} else {
 		pool = panthor_heap_pool_get(vm->heaps.pool);
-		if (!pool)
-			pool = ERR_PTR(-ENOENT);
 	}
 	mutex_unlock(&vm->heaps.lock);
 
 	return pool;
 }
 
-/**
- * panthor_vm_heaps_sizes() - Calculate size of all heap chunks across all
- * heaps over all the heap pools in a VM
- * @pfile: File.
- * @stats: Memory stats to be updated.
- *
- * Calculate all heap chunk sizes in all heap pools bound to a VM. If the VM
- * is active, record the size as active as well.
- */
-void panthor_vm_heaps_sizes(struct panthor_file *pfile, struct drm_memory_stats *stats)
-{
-	struct panthor_vm *vm;
-	unsigned long i;
-
-	if (!pfile->vms)
-		return;
-
-	xa_lock(&pfile->vms->xa);
-	xa_for_each(&pfile->vms->xa, i, vm) {
-		size_t size = panthor_heap_pool_size(vm->heaps.pool);
-		stats->resident += size;
-		if (vm->as.id >= 0)
-			stats->active += size;
-	}
-	xa_unlock(&pfile->vms->xa);
-}
-
-static u64 mair_to_memattr(u64 mair, bool coherent)
+static u64 mair_to_memattr(u64 mair)
 {
 	u64 memattr = 0;
 	u32 i;
@@ -1966,21 +1905,14 @@ static u64 mair_to_memattr(u64 mair, bool coherent)
 				   AS_MEMATTR_AARCH64_SH_MIDGARD_INNER |
 				   AS_MEMATTR_AARCH64_INNER_ALLOC_EXPL(false, false);
 		} else {
-			out_attr = AS_MEMATTR_AARCH64_INNER_OUTER_WB |
-				   AS_MEMATTR_AARCH64_INNER_ALLOC_EXPL(inner & 1, inner & 2);
-			/* Use SH_MIDGARD_INNER mode when device isn't coherent,
-			 * so SH_IS, which is used when IOMMU_CACHE is set, maps
-			 * to Mali's internal-shareable mode. As per the Mali
-			 * Spec, inner and outer-shareable modes aren't allowed
-			 * for WB memory when coherency is disabled.
-			 * Use SH_CPU_INNER mode when coherency is enabled, so
-			 * that SH_IS actually maps to the standard definition of
-			 * inner-shareable.
+			/* Use SH_CPU_INNER mode so SH_IS, which is used when
+			 * IOMMU_CACHE is set, actually maps to the standard
+			 * definition of inner-shareable and not Mali's
+			 * internal-shareable mode.
 			 */
-			if (!coherent)
-				out_attr |= AS_MEMATTR_AARCH64_SH_MIDGARD_INNER;
-			else
-				out_attr |= AS_MEMATTR_AARCH64_SH_CPU_INNER;
+			out_attr = AS_MEMATTR_AARCH64_INNER_OUTER_WB |
+				   AS_MEMATTR_AARCH64_SH_CPU_INNER |
+				   AS_MEMATTR_AARCH64_INNER_ALLOC_EXPL(inner & 1, inner & 2);
 		}
 
 		memattr |= (u64)out_attr << (8 * i);
@@ -2281,16 +2213,6 @@ panthor_vm_create(struct panthor_device *ptdev, bool for_mcu,
 	u64 full_va_range = 1ull << va_bits;
 	struct drm_gem_object *dummy_gem;
 	struct drm_gpu_scheduler *sched;
-	const struct drm_sched_init_args sched_args = {
-		.ops = &panthor_vm_bind_ops,
-		.submit_wq = ptdev->mmu->vm.wq,
-		.num_rqs = 1,
-		.credit_limit = 1,
-		/* Bind operations are synchronous for now, no timeout needed. */
-		.timeout = MAX_SCHEDULE_TIMEOUT,
-		.name = "panthor-vm-bind",
-		.dev = ptdev->base.dev,
-	};
 	struct io_pgtable_cfg pgtbl_cfg;
 	u64 mair, min_va, va_range;
 	struct panthor_vm *vm;
@@ -2348,7 +2270,11 @@ panthor_vm_create(struct panthor_device *ptdev, bool for_mcu,
 		goto err_mm_takedown;
 	}
 
-	ret = drm_sched_init(&vm->sched, &sched_args);
+	/* Bind operations are synchronous for now, no timeout needed. */
+	ret = drm_sched_init(&vm->sched, &panthor_vm_bind_ops, ptdev->mmu->vm.wq,
+			     1, 1, 0,
+			     MAX_SCHEDULE_TIMEOUT, NULL, NULL,
+			     "panthor-vm-bind", ptdev->base.dev);
 	if (ret)
 		goto err_free_io_pgtable;
 
@@ -2358,7 +2284,7 @@ panthor_vm_create(struct panthor_device *ptdev, bool for_mcu,
 		goto err_sched_fini;
 
 	mair = io_pgtable_ops_to_pgtable(vm->pgtbl_ops)->cfg.arm_lpae_s1_cfg.mair;
-	vm->memattr = mair_to_memattr(mair, ptdev->coherent);
+	vm->memattr = mair_to_memattr(mair);
 
 	mutex_lock(&ptdev->mmu->vm.lock);
 	list_add_tail(&vm->node, &ptdev->mmu->vm.list);
@@ -2398,12 +2324,11 @@ panthor_vm_bind_prepare_op_ctx(struct drm_file *file,
 			       const struct drm_panthor_vm_bind_op *op,
 			       struct panthor_vm_op_ctx *op_ctx)
 {
-	ssize_t vm_pgsz = panthor_vm_page_size(vm);
 	struct drm_gem_object *gem;
 	int ret;
 
 	/* Aligned on page size. */
-	if (!IS_ALIGNED(op->va | op->size, vm_pgsz))
+	if ((op->va | op->size) & ~PAGE_MASK)
 		return -EINVAL;
 
 	switch (op->flags & DRM_PANTHOR_VM_BIND_OP_TYPE_MASK) {
@@ -2684,8 +2609,7 @@ int panthor_vm_prepare_mapped_bos_resvs(struct drm_exec *exec, struct panthor_vm
  */
 void panthor_mmu_unplug(struct panthor_device *ptdev)
 {
-	if (!IS_ENABLED(CONFIG_PM) || pm_runtime_active(ptdev->base.dev))
-		panthor_mmu_irq_suspend(&ptdev->mmu->irq);
+	panthor_mmu_irq_suspend(&ptdev->mmu->irq);
 
 	mutex_lock(&ptdev->mmu->as.slots_lock);
 	for (u32 i = 0; i < ARRAY_SIZE(ptdev->mmu->as.slots); i++) {
@@ -2750,9 +2674,9 @@ int panthor_mmu_init(struct panthor_device *ptdev)
 	 * which passes iova as an unsigned long. Patch the mmu_features to reflect this
 	 * limitation.
 	 */
-	if (va_bits > BITS_PER_LONG) {
+	if (sizeof(unsigned long) * 8 < va_bits) {
 		ptdev->gpu_info.mmu_features &= ~GENMASK(7, 0);
-		ptdev->gpu_info.mmu_features |= BITS_PER_LONG;
+		ptdev->gpu_info.mmu_features |= sizeof(unsigned long) * 8;
 	}
 
 	return drmm_add_action_or_reset(&ptdev->base, panthor_mmu_release_wq, mmu->vm.wq);

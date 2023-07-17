@@ -79,10 +79,9 @@ int drm_sched_entity_init(struct drm_sched_entity *entity,
 	RCU_INIT_POINTER(entity->last_scheduled, NULL);
 	RB_CLEAR_NODE(&entity->rb_tree_node);
 
-	if (num_sched_list && !sched_list[0]->sched_rq) {
-		/* Since every entry covered by num_sched_list
-		 * should be non-NULL and therefore we warn drivers
-		 * not to do this and to fix their DRM calling order.
+	if (!sched_list[0]->sched_rq) {
+		/* Warn drivers not to do this and to fix their DRM
+		 * calling order.
 		 */
 		pr_warn("%s: called with uninitialized scheduler\n", __func__);
 	} else if (num_sched_list) {
@@ -91,7 +90,7 @@ int drm_sched_entity_init(struct drm_sched_entity *entity,
 		 * the lowest priority available.
 		 */
 		if (entity->priority >= sched_list[0]->num_rqs) {
-			dev_err(sched_list[0]->dev, "entity has out-of-bounds priority: %u. num_rqs: %u\n",
+			drm_err(sched_list[0], "entity with out-of-bounds priority:%u num_rqs:%u\n",
 				entity->priority, sched_list[0]->num_rqs);
 			entity->priority = max_t(s32, (s32) sched_list[0]->num_rqs - 1,
 						 (s32) DRM_SCHED_PRIORITY_KERNEL);
@@ -264,6 +263,110 @@ static void drm_sched_entity_kill(struct drm_sched_entity *entity)
 }
 
 /**
+ * drm_sched_entity_error - return error of last scheduled job
+ * @entity: scheduler entity to check
+ *
+ * Opportunistically return the error of the last scheduled job. Result can
+ * change any time when new jobs are pushed to the hw.
+ */
+int drm_sched_entity_error(struct drm_sched_entity *entity)
+{
+	struct dma_fence *fence;
+	int r;
+
+	rcu_read_lock();
+	fence = rcu_dereference(entity->last_scheduled);
+	r = fence ? fence->error : 0;
+	rcu_read_unlock();
+
+	return r;
+}
+EXPORT_SYMBOL(drm_sched_entity_error);
+
+static void drm_sched_entity_kill_jobs_work(struct work_struct *wrk)
+{
+	struct drm_sched_job *job = container_of(wrk, typeof(*job), work);
+
+	drm_sched_fence_finished(job->s_fence, -ESRCH);
+	WARN_ON(job->s_fence->parent);
+	job->sched->ops->free_job(job);
+}
+
+/* Signal the scheduler finished fence when the entity in question is killed. */
+static void drm_sched_entity_kill_jobs_cb(struct dma_fence *f,
+					  struct dma_fence_cb *cb)
+{
+	struct drm_sched_job *job = container_of(cb, struct drm_sched_job,
+						 finish_cb);
+	unsigned long index;
+
+	dma_fence_put(f);
+
+	/* Wait for all dependencies to avoid data corruptions */
+	xa_for_each(&job->dependencies, index, f) {
+		struct drm_sched_fence *s_fence = to_drm_sched_fence(f);
+
+		if (s_fence && f == &s_fence->scheduled) {
+			/* The dependencies array had a reference on the scheduled
+			 * fence, and the finished fence refcount might have
+			 * dropped to zero. Use dma_fence_get_rcu() so we get
+			 * a NULL fence in that case.
+			 */
+			f = dma_fence_get_rcu(&s_fence->finished);
+
+			/* Now that we have a reference on the finished fence,
+			 * we can release the reference the dependencies array
+			 * had on the scheduled fence.
+			 */
+			dma_fence_put(&s_fence->scheduled);
+		}
+
+		xa_erase(&job->dependencies, index);
+		if (f && !dma_fence_add_callback(f, &job->finish_cb,
+						 drm_sched_entity_kill_jobs_cb))
+			return;
+
+		dma_fence_put(f);
+	}
+
+	INIT_WORK(&job->work, drm_sched_entity_kill_jobs_work);
+	schedule_work(&job->work);
+}
+
+/* Remove the entity from the scheduler and kill all pending jobs */
+static void drm_sched_entity_kill(struct drm_sched_entity *entity)
+{
+	struct drm_sched_job *job;
+	struct dma_fence *prev;
+
+	if (!entity->rq)
+		return;
+
+	spin_lock(&entity->rq_lock);
+	entity->stopped = true;
+	drm_sched_rq_remove_entity(entity->rq, entity);
+	spin_unlock(&entity->rq_lock);
+
+	/* Make sure this entity is not used by the scheduler at the moment */
+	wait_for_completion(&entity->entity_idle);
+
+	/* The entity is guaranteed to not be used by the scheduler */
+	prev = rcu_dereference_check(entity->last_scheduled, true);
+	dma_fence_get(prev);
+	while ((job = to_drm_sched_job(spsc_queue_pop(&entity->job_queue)))) {
+		struct drm_sched_fence *s_fence = job->s_fence;
+
+		dma_fence_get(&s_fence->finished);
+		if (!prev || dma_fence_add_callback(prev, &job->finish_cb,
+					   drm_sched_entity_kill_jobs_cb))
+			drm_sched_entity_kill_jobs_cb(NULL, &job->finish_cb);
+
+		prev = &s_fence->finished;
+	}
+	dma_fence_put(prev);
+}
+
+/**
  * drm_sched_entity_flush - Flush a context entity
  *
  * @entity: scheduler entity
@@ -365,9 +468,8 @@ static void drm_sched_entity_wakeup(struct dma_fence *f,
 	struct drm_sched_entity *entity =
 		container_of(cb, struct drm_sched_entity, cb);
 
-	entity->dependency = NULL;
-	dma_fence_put(f);
-	drm_sched_wakeup(entity->rq->sched);
+	drm_sched_entity_clear_dep(f, cb);
+	drm_sched_wakeup(entity->rq->sched, entity);
 }
 
 /**
@@ -491,18 +593,9 @@ struct drm_sched_job *drm_sched_entity_pop_job(struct drm_sched_entity *entity)
 	if (drm_sched_policy == DRM_SCHED_POLICY_FIFO) {
 		struct drm_sched_job *next;
 
-		next = drm_sched_entity_queue_peek(entity);
-		if (next) {
-			struct drm_sched_rq *rq;
-
-			spin_lock(&entity->lock);
-			rq = entity->rq;
-			spin_lock(&rq->lock);
-			drm_sched_rq_update_fifo_locked(entity, rq,
-							next->submit_ts);
-			spin_unlock(&rq->lock);
-			spin_unlock(&entity->lock);
-		}
+		next = to_drm_sched_job(spsc_queue_peek(&entity->job_queue));
+		if (next)
+			drm_sched_rq_update_fifo(entity, next->submit_ts);
 	}
 
 	/* Jobs and entities might have different lifecycles. Since we're
@@ -604,19 +697,13 @@ void drm_sched_entity_push_job(struct drm_sched_job *sched_job)
 			return;
 		}
 
-		rq = entity->rq;
-		sched = rq->sched;
-
-		spin_lock(&rq->lock);
-		drm_sched_rq_add_entity(rq, entity);
+		drm_sched_rq_add_entity(entity->rq, entity);
+		spin_unlock(&entity->rq_lock);
 
 		if (drm_sched_policy == DRM_SCHED_POLICY_FIFO)
-			drm_sched_rq_update_fifo_locked(entity, rq, submit_ts);
+			drm_sched_rq_update_fifo(entity, submit_ts);
 
-		spin_unlock(&rq->lock);
-		spin_unlock(&entity->lock);
-
-		drm_sched_wakeup(sched);
+		drm_sched_wakeup(entity->rq->sched, entity);
 	}
 }
 EXPORT_SYMBOL(drm_sched_entity_push_job);

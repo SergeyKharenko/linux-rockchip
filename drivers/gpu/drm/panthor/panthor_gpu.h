@@ -5,8 +5,6 @@
 #ifndef __PANTHOR_GPU_H__
 #define __PANTHOR_GPU_H__
 
-#include <linux/types.h>
-
 struct panthor_device;
 
 int panthor_gpu_init(struct panthor_device *ptdev);

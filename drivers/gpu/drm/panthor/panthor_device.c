@@ -4,7 +4,6 @@
 /* Copyright 2023 Collabora ltd. */
 
 #include <linux/clk.h>
-#include <linux/mm.h>
 #include <linux/platform_device.h>
 #include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
@@ -21,24 +20,6 @@
 #include "panthor_mmu.h"
 #include "panthor_regs.h"
 #include "panthor_sched.h"
-
-static int panthor_gpu_coherency_init(struct panthor_device *ptdev)
-{
-	ptdev->coherent = device_get_dma_attr(ptdev->base.dev) == DEV_DMA_COHERENT;
-
-	if (!ptdev->coherent)
-		return 0;
-
-	/* Check if the ACE-Lite coherency protocol is actually supported by the GPU.
-	 * ACE protocol has never been supported for command stream frontend GPUs.
-	 */
-	if ((gpu_read(ptdev, GPU_COHERENCY_FEATURES) &
-		      GPU_COHERENCY_PROT_BIT(ACE_LITE)))
-		return 0;
-
-	drm_err(&ptdev->base, "Coherency not supported by the device");
-	return -ENOTSUPP;
-}
 
 static int panthor_clk_init(struct panthor_device *ptdev)
 {
@@ -111,10 +92,6 @@ void panthor_device_unplug(struct panthor_device *ptdev)
 	pm_runtime_dont_use_autosuspend(ptdev->base.dev);
 	pm_runtime_put_sync_suspend(ptdev->base.dev);
 
-	/* If PM is disabled, we need to call the suspend handler manually. */
-	if (!IS_ENABLED(CONFIG_PM))
-		panthor_device_suspend(ptdev->base.dev);
-
 	/* Report the unplug operation as done to unblock concurrent
 	 * panthor_device_unplug() callers.
 	 */
@@ -134,11 +111,14 @@ static void panthor_device_reset_work(struct work_struct *work)
 	struct panthor_device *ptdev = container_of(work, struct panthor_device, reset.work);
 	int ret = 0, cookie;
 
-	/* If the device is entering suspend, we don't reset. A slow reset will
-	 * be forced at resume time instead.
-	 */
-	if (atomic_read(&ptdev->pm.state) != PANTHOR_DEVICE_PM_STATE_ACTIVE)
+	if (atomic_read(&ptdev->pm.state) != PANTHOR_DEVICE_PM_STATE_ACTIVE) {
+		/*
+		 * No need for a reset as the device has been (or will be)
+		 * powered down
+		 */
+		atomic_set(&ptdev->reset.pending, 0);
 		return;
+	}
 
 	if (!drm_dev_enter(&ptdev->base, &cookie))
 		return;
@@ -150,8 +130,13 @@ static void panthor_device_reset_work(struct work_struct *work)
 	panthor_gpu_l2_power_on(ptdev);
 	panthor_mmu_post_reset(ptdev);
 	ret = panthor_fw_post_reset(ptdev);
+	if (ret)
+		goto out_dev_exit;
+
 	atomic_set(&ptdev->reset.pending, 0);
-	panthor_sched_post_reset(ptdev, ret != 0);
+	panthor_sched_post_reset(ptdev);
+
+out_dev_exit:
 	drm_dev_exit(cookie);
 
 	if (ret) {
@@ -167,19 +152,16 @@ static bool panthor_device_is_initialized(struct panthor_device *ptdev)
 
 static void panthor_device_free_page(struct drm_device *ddev, void *data)
 {
-	__free_page(data);
+	free_page((unsigned long)data);
 }
 
 int panthor_device_init(struct panthor_device *ptdev)
 {
-	u32 *dummy_page_virt;
 	struct resource *res;
 	struct page *p;
 	int ret;
 
-	ret = panthor_gpu_coherency_init(ptdev);
-	if (ret)
-		return ret;
+	ptdev->coherent = device_get_dma_attr(ptdev->base.dev) == DEV_DMA_COHERENT;
 
 	init_completion(&ptdev->unplug.done);
 	ret = drmm_mutex_init(&ptdev->base, &ptdev->unplug.lock);
@@ -190,18 +172,12 @@ int panthor_device_init(struct panthor_device *ptdev)
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_DEBUG_FS
-	drmm_mutex_init(&ptdev->base, &ptdev->gems.lock);
-	INIT_LIST_HEAD(&ptdev->gems.node);
-#endif
-
 	atomic_set(&ptdev->pm.state, PANTHOR_DEVICE_PM_STATE_SUSPENDED);
 	p = alloc_page(GFP_KERNEL | __GFP_ZERO);
 	if (!p)
 		return -ENOMEM;
 
-	ptdev->pm.dummy_latest_flush = p;
-	dummy_page_virt = page_address(p);
+	ptdev->pm.dummy_latest_flush = page_address(p);
 	ret = drmm_add_action_or_reset(&ptdev->base, panthor_device_free_page,
 				       ptdev->pm.dummy_latest_flush);
 	if (ret)
@@ -213,7 +189,7 @@ int panthor_device_init(struct panthor_device *ptdev)
 	 * happens while the dummy page is mapped. Zero cannot be used because
 	 * that means 'always flush'.
 	 */
-	*dummy_page_virt = 1;
+	*ptdev->pm.dummy_latest_flush = 1;
 
 	INIT_WORK(&ptdev->reset.work, panthor_device_reset_work);
 	ptdev->reset.wq = alloc_ordered_workqueue("panthor-reset-wq", 0);
@@ -245,14 +221,7 @@ int panthor_device_init(struct panthor_device *ptdev)
 
 	ret = pm_runtime_resume_and_get(ptdev->base.dev);
 	if (ret)
-		goto err_unplug_gpu;
-
-	/* If PM is disabled, we need to call panthor_device_resume() manually. */
-	if (!IS_ENABLED(CONFIG_PM)) {
-		ret = panthor_device_resume(ptdev->base.dev);
-		if (ret)
-			return ret;
-	}
+		return ret;
 
 	ret = panthor_gpu_init(ptdev);
 	if (ret)
@@ -316,7 +285,6 @@ static const struct panthor_exception_info panthor_exception_infos[] = {
 	PANTHOR_EXCEPTION(ACTIVE),
 	PANTHOR_EXCEPTION(CS_RES_TERM),
 	PANTHOR_EXCEPTION(CS_CONFIG_FAULT),
-	PANTHOR_EXCEPTION(CS_UNRECOVERABLE),
 	PANTHOR_EXCEPTION(CS_ENDPOINT_FAULT),
 	PANTHOR_EXCEPTION(CS_BUS_FAULT),
 	PANTHOR_EXCEPTION(CS_INSTR_INVALID),
@@ -390,7 +358,7 @@ static vm_fault_t panthor_mmio_vm_fault(struct vm_fault *vmf)
 		if (active)
 			pfn = __phys_to_pfn(ptdev->phys_addr + CSF_GPU_LATEST_FLUSH_ID);
 		else
-			pfn = page_to_pfn(ptdev->pm.dummy_latest_flush);
+			pfn = virt_to_pfn(ptdev->pm.dummy_latest_flush);
 		break;
 
 	default:
@@ -418,15 +386,11 @@ int panthor_device_mmap_io(struct panthor_device *ptdev, struct vm_area_struct *
 {
 	u64 offset = (u64)vma->vm_pgoff << PAGE_SHIFT;
 
-	if ((vma->vm_flags & VM_SHARED) == 0)
-		return -EINVAL;
-
 	switch (offset) {
 	case DRM_PANTHOR_USER_FLUSH_ID_MMIO_OFFSET:
 		if (vma->vm_end - vma->vm_start != PAGE_SIZE ||
 		    (vma->vm_flags & (VM_WRITE | VM_EXEC)))
 			return -EINVAL;
-		vma->vm_flags &= ~VM_MAYWRITE;
 
 		break;
 
@@ -442,22 +406,7 @@ int panthor_device_mmap_io(struct panthor_device *ptdev, struct vm_area_struct *
 	return 0;
 }
 
-static int panthor_device_resume_hw_components(struct panthor_device *ptdev)
-{
-	int ret;
-
-	panthor_gpu_resume(ptdev);
-	panthor_mmu_resume(ptdev);
-
-	ret = panthor_fw_resume(ptdev);
-	if (!ret)
-		return 0;
-
-	panthor_mmu_suspend(ptdev);
-	panthor_gpu_suspend(ptdev);
-	return ret;
-}
-
+#ifdef CONFIG_PM
 int panthor_device_resume(struct device *dev)
 {
 	struct panthor_device *ptdev = dev_get_drvdata(dev);
@@ -484,33 +433,30 @@ int panthor_device_resume(struct device *dev)
 	if (ret)
 		goto err_disable_stacks_clk;
 
-	panthor_devfreq_resume(ptdev);
+	ret = panthor_devfreq_resume(ptdev);
+	if (ret)
+		goto err_disable_coregroup_clk;
 
 	if (panthor_device_is_initialized(ptdev) &&
 	    drm_dev_enter(&ptdev->base, &cookie)) {
-		/* If there was a reset pending at the time we suspended the
-		 * device, we force a slow reset.
-		 */
-		if (atomic_read(&ptdev->reset.pending)) {
-			ptdev->reset.fast = false;
-			atomic_set(&ptdev->reset.pending, 0);
-		}
-
-		ret = panthor_device_resume_hw_components(ptdev);
-		if (ret && ptdev->reset.fast) {
-			drm_err(&ptdev->base, "Fast reset failed, trying a slow reset");
-			ptdev->reset.fast = false;
-			ret = panthor_device_resume_hw_components(ptdev);
-		}
-
-		if (!ret)
+		panthor_gpu_resume(ptdev);
+		panthor_mmu_resume(ptdev);
+		ret = drm_WARN_ON(&ptdev->base, panthor_fw_resume(ptdev));
+		if (!ret) {
 			panthor_sched_resume(ptdev);
+		} else {
+			panthor_mmu_suspend(ptdev);
+			panthor_gpu_suspend(ptdev);
+		}
 
 		drm_dev_exit(cookie);
 
 		if (ret)
 			goto err_suspend_devfreq;
 	}
+
+	if (atomic_read(&ptdev->reset.pending))
+		queue_work(ptdev->reset.wq, &ptdev->reset.work);
 
 	/* Clear all IOMEM mappings pointing to this device after we've
 	 * resumed. This way the fake mappings pointing to the dummy pages
@@ -526,6 +472,8 @@ int panthor_device_resume(struct device *dev)
 
 err_suspend_devfreq:
 	panthor_devfreq_suspend(ptdev);
+
+err_disable_coregroup_clk:
 	clk_disable_unprepare(ptdev->clks.coregroup);
 
 err_disable_stacks_clk:
@@ -539,14 +487,13 @@ err_disable_bus_clk:
 
 err_set_suspended:
 	atomic_set(&ptdev->pm.state, PANTHOR_DEVICE_PM_STATE_SUSPENDED);
-	atomic_set(&ptdev->pm.recovery_needed, 1);
 	return ret;
 }
 
 int panthor_device_suspend(struct device *dev)
 {
 	struct panthor_device *ptdev = dev_get_drvdata(dev);
-	int cookie;
+	int ret, cookie;
 
 	if (atomic_read(&ptdev->pm.state) != PANTHOR_DEVICE_PM_STATE_ACTIVE)
 		return -EINVAL;
@@ -578,7 +525,19 @@ int panthor_device_suspend(struct device *dev)
 		drm_dev_exit(cookie);
 	}
 
-	panthor_devfreq_suspend(ptdev);
+	ret = panthor_devfreq_suspend(ptdev);
+	if (ret) {
+		if (panthor_device_is_initialized(ptdev) &&
+		    drm_dev_enter(&ptdev->base, &cookie)) {
+			panthor_gpu_resume(ptdev);
+			panthor_mmu_resume(ptdev);
+			drm_WARN_ON(&ptdev->base, panthor_fw_resume(ptdev));
+			panthor_sched_resume(ptdev);
+			drm_dev_exit(cookie);
+		}
+
+		goto err_set_active;
+	}
 
 	clk_disable_unprepare(ptdev->clks.coregroup);
 	clk_disable_unprepare(ptdev->clks.stacks);
@@ -586,4 +545,18 @@ int panthor_device_suspend(struct device *dev)
 	clk_disable_unprepare(ptdev->clks.bus);
 	atomic_set(&ptdev->pm.state, PANTHOR_DEVICE_PM_STATE_SUSPENDED);
 	return 0;
+
+err_set_active:
+	/* If something failed and we have to revert back to an
+	 * active state, we also need to clear the MMIO userspace
+	 * mappings, so any dumb pages that were mapped while we
+	 * were trying to suspend gets invalidated.
+	 */
+	mutex_lock(&ptdev->pm.mmio_lock);
+	atomic_set(&ptdev->pm.state, PANTHOR_DEVICE_PM_STATE_ACTIVE);
+	unmap_mapping_range(ptdev->base.anon_inode->i_mapping,
+			    DRM_PANTHOR_USER_MMIO_OFFSET, 0, 1);
+	mutex_unlock(&ptdev->pm.mmio_lock);
+	return ret;
 }
+#endif

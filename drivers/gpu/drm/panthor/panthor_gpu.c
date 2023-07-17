@@ -77,12 +77,6 @@ static const struct panthor_model gpu_models[] = {
 	 GPU_IRQ_RESET_COMPLETED | \
 	 GPU_IRQ_CLEAN_CACHES_COMPLETED)
 
-static void panthor_gpu_coherency_set(struct panthor_device *ptdev)
-{
-	gpu_write(ptdev, GPU_COHERENCY_PROTOCOL,
-		ptdev->coherent ? GPU_COHERENCY_PROT_BIT(ACE_LITE) : GPU_COHERENCY_NONE);
-}
-
 static void panthor_gpu_init_info(struct panthor_device *ptdev)
 {
 	const struct panthor_model *model;
@@ -174,8 +168,7 @@ void panthor_gpu_unplug(struct panthor_device *ptdev)
 	unsigned long flags;
 
 	/* Make sure the IRQ handler is not running after that point. */
-	if (!IS_ENABLED(CONFIG_PM) || pm_runtime_active(ptdev->base.dev))
-		panthor_gpu_irq_suspend(&ptdev->gpu->irq);
+	panthor_gpu_irq_suspend(&ptdev->gpu->irq);
 
 	/* Wake-up all waiters. */
 	spin_lock_irqsave(&ptdev->gpu->reqs_lock, flags);
@@ -212,8 +205,8 @@ int panthor_gpu_init(struct panthor_device *ptdev)
 		return ret;
 
 	irq = platform_get_irq_byname(to_platform_device(ptdev->base.dev), "gpu");
-	if (irq < 0)
-		return irq;
+	if (irq <= 0)
+		return ret;
 
 	ret = panthor_request_gpu_irq(ptdev, &ptdev->gpu->irq, irq, GPU_INTERRUPTS_MASK);
 	if (ret)
@@ -295,13 +288,23 @@ int panthor_gpu_block_power_on(struct panthor_device *ptdev,
 
 	gpu_write64(ptdev, pwron_reg, mask);
 
-	ret = gpu_read64_relaxed_poll_timeout(ptdev, rdy_reg, val,
-					      (mask & val) == val,
-					      100, timeout_us);
-	if (ret) {
-		drm_err(&ptdev->base, "timeout waiting on %s:%llx readiness",
-			blk_name, mask);
-		return ret;
+	if (mask >> 32)
+		gpu_write(ptdev, pwron_reg + 4, mask >> 32);
+
+	for (i = 0; i < 2; i++) {
+		u32 mask32 = mask >> (i * 32);
+
+		if (!mask32)
+			continue;
+
+		ret = readl_relaxed_poll_timeout(ptdev->iomem + rdy_reg + (i * 4),
+						 val, (mask32 & val) == mask32,
+						 100, timeout_us);
+		if (ret) {
+			drm_err(&ptdev->base, "timeout waiting on %s:%llx readyness",
+				blk_name, mask);
+			return ret;
+		}
 	}
 
 	return 0;
@@ -329,9 +332,6 @@ int panthor_gpu_l2_power_on(struct panthor_device *ptdev)
 			      hweight64(core_mask),
 			      hweight64(ptdev->gpu_info.shader_present));
 	}
-
-	/* Set the desired coherency mode before the power up of L2 */
-	panthor_gpu_coherency_set(ptdev);
 
 	return panthor_gpu_power_on(ptdev, L2, 1, 20000);
 }
@@ -428,12 +428,11 @@ int panthor_gpu_soft_reset(struct panthor_device *ptdev)
  */
 void panthor_gpu_suspend(struct panthor_device *ptdev)
 {
-	/* On a fast reset, simply power down the L2. */
-	if (!ptdev->reset.fast)
-		panthor_gpu_soft_reset(ptdev);
-	else
-		panthor_gpu_power_off(ptdev, L2, 1, 20000);
-
+	/*
+	 * It may be preferable to simply power down the L2, but for now just
+	 * soft-reset which will leave the L2 powered down.
+	 */
+	panthor_gpu_soft_reset(ptdev);
 	panthor_gpu_irq_suspend(&ptdev->gpu->irq);
 }
 
@@ -449,4 +448,3 @@ void panthor_gpu_resume(struct panthor_device *ptdev)
 	panthor_gpu_irq_resume(&ptdev->gpu->irq, GPU_INTERRUPTS_MASK);
 	panthor_gpu_l2_power_on(ptdev);
 }
-

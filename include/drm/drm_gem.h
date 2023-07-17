@@ -534,31 +534,6 @@ unsigned long drm_gem_lru_scan(struct drm_gem_lru *lru,
 			       unsigned long *remaining,
 			       bool (*shrink)(struct drm_gem_object *obj));
 
-/**
- * drm_gem_object_is_shared_for_memory_stats - helper for shared memory stats
- *
- * This helper should only be used for fdinfo shared memory stats to determine
- * if a GEM object is shared.
- *
- * @obj: obj in question
- */
-static inline bool drm_gem_object_is_shared_for_memory_stats(struct drm_gem_object *obj)
-{
-	return (obj->handle_count > 1) || obj->dma_buf;
-}
-
-/**
- * drm_gem_is_imported() - Tests if GEM object's buffer has been imported
- * @obj: the GEM object
- *
- * Returns:
- * True if the GEM object's buffer has been imported, false otherwise
- */
-static inline bool drm_gem_is_imported(const struct drm_gem_object *obj)
-{
-	return !!obj->import_attach;
-}
-
 #ifdef CONFIG_LOCKDEP
 /**
  * drm_gem_gpuva_set_lock() - Set the lock protecting accesses to the gpuva list.
