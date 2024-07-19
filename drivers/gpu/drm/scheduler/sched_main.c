@@ -791,7 +791,6 @@ EXPORT_SYMBOL(drm_sched_stop);
  * drm_sched_start - recover jobs after a reset
  *
  * @sched: scheduler instance
- * @errno: error to set on the pending fences
  *
  * This function is typically used for reset recovery (see the docu of
  * drm_sched_backend_ops.timedout_job() for details). Do not call it for
@@ -802,7 +801,7 @@ EXPORT_SYMBOL(drm_sched_stop);
  * in their &struct drm_sched_backend_ops.timedout_job callback when they
  * skip a reset using &enum drm_gpu_sched_stat.DRM_GPU_SCHED_STAT_NO_HANG.
  */
-void drm_sched_start(struct drm_gpu_scheduler *sched, int errno)
+void drm_sched_start(struct drm_gpu_scheduler *sched)
 {
 	struct drm_sched_job *s_job, *tmp;
 
@@ -818,25 +817,16 @@ void drm_sched_start(struct drm_gpu_scheduler *sched, int errno)
 		atomic_add(s_job->credits, &sched->credit_count);
 
 		if (!fence) {
-			drm_sched_job_done(s_job, errno ?: -ECANCELED);
+			drm_sched_job_done(s_job, -ECANCELED);
 			continue;
 		}
 
-		if (fence) {
-			r = dma_fence_add_callback(fence, &s_job->cb,
-						   drm_sched_job_done_cb);
-			if (r == -ENOENT)
-				drm_sched_job_done(s_job, fence->error);
-			else if (r)
-				DRM_DEV_ERROR(sched->dev, "fence add callback failed (%d)\n",
-					  r);
-		} else
-			drm_sched_job_done(s_job, -ECANCELED);
+		if (dma_fence_add_callback(fence, &s_job->cb,
+					   drm_sched_job_done_cb))
+			drm_sched_job_done(s_job, fence->error);
 	}
 
-	if (full_recovery)
-		drm_sched_start_timeout_unlocked(sched);
-
+	drm_sched_start_timeout_unlocked(sched);
 	drm_sched_wqueue_start(sched);
 }
 EXPORT_SYMBOL(drm_sched_start);
