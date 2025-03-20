@@ -55,8 +55,6 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rock-5b-rpi-camera-v2.dtbo \
 	rock-5b-radxa-camera-4k.dtbo \
 	rock-5b-sata.dtbo \
-	rock-5b-plus-cam0-radxa-camera-4k.dtbo \
-	rock-5b-plus-radxa-display-8hd.dtbo \
 	rock-5t-radxa-display-10fhd.dtbo \
 	rock-5-itx-radxa-camera-4k-on-cam0.dtbo \
 	rock-5-itx-radxa-camera-4k-on-cam1.dtbo \
@@ -84,16 +82,13 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	yy3568-display-dsi1.dtbo \
 	yy3568-display-edp.dtbo \
 	yy3568-sata2.dtbo \
-	youyeetoo-r1-display-dsi0.dtbo \
-	youyeetoo-r1-display-dsi1.dtbo \
-	youyeetoo-yy3588-camera0-gc8034.dtbo \
-	youyeetoo-yy3588-camera1-gc8034.dtbo \
-	youyeetoo-yy3588-display-dsi1.dtbo \
 	khadas-edge2-display-dsi0.dtbo \
 	khadas-edge2-display-dsi1.dtbo \
 	khadas-edge2-cam1.dtbo \
 	khadas-edge2-cam2.dtbo \
 	khadas-edge2-cam3.dtbo \
+	nanopc-t6-display-aml101.dtbo \
+	nanopc-t6-display-aml0801.dtbo \
 	nanopi-m6-display-dsi0-yx35.dtbo \
 	nanopi-m6-display-dsi1-yx35.dtbo \
 	nanopi-m6-spi-nor-flash.dtbo \
