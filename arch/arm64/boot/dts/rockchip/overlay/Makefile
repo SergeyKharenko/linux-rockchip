@@ -87,6 +87,8 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	khadas-edge2-cam1.dtbo \
 	khadas-edge2-cam2.dtbo \
 	khadas-edge2-cam3.dtbo \
+	nanopc-t6-display-aml101.dtbo \
+	nanopc-t6-display-aml0801.dtbo \
 	nanopi-m6-display-dsi0-yx35.dtbo \
 	nanopi-m6-display-dsi1-yx35.dtbo \
 	nanopi-m6-spi-nor-flash.dtbo \
