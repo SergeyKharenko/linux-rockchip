@@ -92,6 +92,12 @@ config NET_DSA_TAG_KSZ
 	  Say Y if you want to enable support for tagging frames for the
 	  Microchip 8795/937x/9477/9893 families of switches.
 
+config NET_DSA_TAG_MXL_GSW1XX
+	tristate "Tag driver for Maxlinear GSW1XX switches"
+	help
+	Say Y or M if you want to enable support for tagging frames for the
+	MaxLinear GSW1XX switches.
+
 config NET_DSA_TAG_OCELOT
 	tristate "Tag driver for Ocelot family of switches, using NPI port"
 	select PACKING

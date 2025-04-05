@@ -186,11 +186,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-rk817-tablet.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-rk817-tablet-k108.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-rk817-tablet-rkg11.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-rk817-tablet-v10.dtb
-<<<<<<< HEAD
-dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566pro-evb2-lp4x-v10.dtb
-=======
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-sk-nano.dtb
->>>>>>> 9c8ad895b8eb (feat: add support of sk-nano)
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3567-evb2-lp4x-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3567-evb2-lp4x-v10-dual-channel-lvds.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3567-evb2-lp4x-v10-one-vp-two-single-channel-lvds.dtb
@@ -250,7 +246,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-ok3568c.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-pcie-ep-lp4x-v10-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-radxa-e25.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a.dtb
-dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-swan1-w28.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-sk-svo.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-toybrick-sd0-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-toybrick-sd0-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-toybrick-x0-android.dtb
