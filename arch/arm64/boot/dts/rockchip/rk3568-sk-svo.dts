@@ -70,15 +70,6 @@
 		status = "okay";
 		compatible = "gpio-leds";
 
-		// sys_led: sys-led {
-		// 	gpios = <&gpio0 RK_PC0 GPIO_ACTIVE_HIGH>;
-		// 	function = LED_FUNCTION_HEARTBEAT;
-		// 	color = <LED_COLOR_ID_BLUE>;
-		// 	linux,default-trigger = "heartbeat";
-		// 	pinctrl-names = "default";
-		// 	pinctrl-0 = <&sys_led_pin>;
-		// };
-
 		usr_led0: usr-led0 {
 			gpios = <&gpio4 RK_PC0 GPIO_ACTIVE_HIGH>;
 			function = LED_FUNCTION_HEARTBEAT;
@@ -114,6 +105,20 @@
 		};
 	};
 
+	lt8618_sound: spdif-sound {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "ROCKCHIP,SPDIF";
+
+		simple-audio-card,cpu {
+			sound-dai = <&spdif_8ch>;
+		};
+
+		simple-audio-card,codec {
+			sound-dai = <&spdif_out>;
+		};
+	};
+
 	rk628_sound: rk628-sound {
 		status = "okay";
 		compatible = "simple-audio-card";
@@ -146,6 +151,12 @@
 		simple-audio-card,codec {
 			sound-dai = <&rk809_codec>;
 		};
+	};
+
+	spdif_out: spdif-out {
+		status = "okay";
+		compatible = "linux,spdif-dit";
+		#sound-dai-cells = <0>;
 	};
 
 	vcc3v3_sys: vcc3v3-sys {
@@ -647,29 +658,37 @@
 		};
 	};
 	
-	lt8618: lt8618@39 {
-		compatible = "lontium,lt8618";
-		reg = <0x39>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&lt8618_gpio>;
-		interrupt-parent = <&gpio2>;
-		interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
-		reset-gpios = <&gpio2 RK_PB0 GPIO_ACTIVE_HIGH>;
-		// #enable-gpio = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
+	// lt8618: lt8618@39 {
+	// 	compatible = "lontium,lt8618";
+	// 	reg = <0x39>;
+	// 	pinctrl-names = "default";
+	// 	pinctrl-0 = <&lt8618_gpio>;
+	// 	interrupt-parent = <&gpio2>;
+	// 	interrupts = <7 IRQ_TYPE_LEVEL_HIGH>;
+	// 	reset-gpios = <&gpio2 RK_PB0 GPIO_ACTIVE_HIGH>;
+	// 	// #enable-gpio = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
 
-		ports {
-			#address-cells = <0x01>;
-			#size-cells = <0x00>;
+	// 	ports {
+	// 		#address-cells = <0x01>;
+	// 		#size-cells = <0x00>;
 
-			port@0 {
-				reg = <0x00>;
+	// 		port@0 {
+	// 			reg = <0x00>;
 
-				lt8618_in_rgb: endpoint {
-					remote-endpoint = <&rgb_out_lt8618>;
-				};
-			};
-		};
-	};
+	// 			lt8618_in_rgb: endpoint {
+	// 				remote-endpoint = <&rgb_out_lt8618>;
+	// 			};
+	// 		};
+	// 	};
+	// };
+};
+
+&i2c4 {
+	status = "okay";
+};
+
+&i2c5 {
+	status = "okay";
 };
 
 &i2s0_8ch {
@@ -688,6 +707,22 @@
 	rockchip,capture-only;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2s2m0_sclkrx &i2s2m0_lrckrx &i2s2m0_sdi>;
+};
+
+&iep {
+	status = "okay";
+};
+
+&iep_mmu {
+	status = "okay";
+};
+
+&jpegd {
+	status = "okay";
+};
+
+&jpegd_mmu {
+	status = "okay";
 };
 
 &mdio1 {
@@ -822,12 +857,12 @@
 	};
 };
 
+&mpp_srv {
+	status = "okay";
+};
+
 &pinctrl {
 	leds {
-		sys_led_pin: sys-led-pin {
-			rockchip,pins = <0 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-
 		usr_led0_pin: usr-led0-pin {
 			rockchip,pins = <4 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
@@ -899,6 +934,11 @@
 	status = "okay";
 };
 
+&pwm7 {
+	// status = "okay";
+
+};
+
 &reserved_memory {
 	linux,cma {
 		compatible = "shared-dma-pool";
@@ -909,24 +949,24 @@
 	};
 };
 
-&rgb {
-	status = "okay";
-	pinctrl-names = "default";
-	pinctrl-0 = <&bt1120_pins>;
+// &rgb {
+// 	status = "okay";
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&bt1120_pins>;
 
-	ports {
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
+// 	ports {
+// 		port@1 {
+// 			reg = <1>;
+// 			#address-cells = <1>;
+// 			#size-cells = <0>;
 
-			rgb_out_lt8618: endpoint@0 {
-				reg = <0>;
-				remote-endpoint = <&lt8618_in_rgb>;
-			};
-		};
-	};
-};
+// 			rgb_out_lt8618: endpoint@0 {
+// 				reg = <0>;
+// 				remote-endpoint = <&lt8618_in_rgb>;
+// 			};
+// 		};
+// 	};
+// };
 
 &rkcif {
 	status = "okay";
@@ -1016,7 +1056,13 @@
 	max-frequency = <200000000>;
 };
 
-&sfc {
+// &sfc {
+// 	status = "okay";
+// };
+
+&spdif_8ch {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spdifm1_tx>;
 	status = "okay";
 };
 
@@ -1028,24 +1074,24 @@
 // 	status = "okay";
 // };
 
-&uart1 {
-	status = "okay";
-};
+// &uart1 {
+// 	status = "okay";
+// };
 
-&uart3 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart3m1_xfer>;
-	status = "okay";
-};
+// &uart3 {
+// 	pinctrl-names = "default";
+// 	pinctrl-0 = <&uart3m1_xfer>;
+// 	status = "okay";
+// };
 
-&uart5 {
-	status = "okay";
-};
+// &uart5 {
+// 	status = "okay";
+// };
 
 &uart6 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart6m1_xfer>;
-	status = "okay";
+	// status = "okay";
 };
 
 &usb2phy0 {
