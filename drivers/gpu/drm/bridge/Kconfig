@@ -112,7 +112,7 @@ config DRM_ITE_IT6505
           ITE IT6505 DisplayPort bridge chip driver.
 
 config DRM_LONTIUM_LT8618
-	tristate "Lontium LT8618 BT1120/HDMI bridge"
+	tristate "Lontium LT8618 RGB/HDMI bridge"
 	depends on OF
 	select DRM_KMS_HELPER
 	select REGMAP_I2C
@@ -121,7 +121,7 @@ config DRM_LONTIUM_LT8618
 	select VIDEOMODE_HELPERS
 	select HDMI if ROCKCHIP_MINI_KERNEL
 	help
-		Driver for Lontium LT8618 BT1120 to HDMI bridge chip driver.
+		Driver for Lontium LT8618 RGB to HDMI bridge chip driver.
 
 config DRM_LONTIUM_LT8912B
 	tristate "Lontium LT8912B DSI/HDMI bridge"
