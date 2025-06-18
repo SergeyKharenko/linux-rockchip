@@ -1165,6 +1165,22 @@ static int yt8531_config_init(struct phy_device *phydev)
 	if (ret < 0)
 		return ret;
 
+	/* Customize LED State*/
+	val = 0x40;
+	ret = ytphy_write_ext(phydev, 0xa00d, val);
+	if (ret < 0)
+		return ret;
+
+	val = 0x670;
+	ret = ytphy_write_ext(phydev, 0xa00e, val);
+	if (ret < 0)
+		return ret;
+
+	val = 0x0F;
+	ret = ytphy_write_ext(phydev, 0xa00f, val);
+	if (ret < 0)
+		return ret;
+
 	return ret;
 }
 

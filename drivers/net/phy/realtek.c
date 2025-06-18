@@ -30,6 +30,7 @@
 #define RTL8211F_PHYCR1				0x18
 #define RTL8211F_PHYCR2				0x19
 #define RTL8211F_INSR				0x1d
+#define RTL8211F_LCR				0x10
 
 #define RTL8211F_TX_DELAY			BIT(8)
 #define RTL8211F_RX_DELAY			BIT(3)
@@ -340,6 +341,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	struct rtl821x_priv *priv = phydev->priv;
 	struct device *dev = &phydev->mdio.dev;
 	u16 val_txdly, val_rxdly;
+	u16 val_lcr;
 	int ret;
 
 	ret = phy_modify_paged_changed(phydev, 0xa43, RTL8211F_PHYCR1,
@@ -416,6 +418,14 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 		}
 
 		return genphy_soft_reset(phydev);
+	}
+
+	val_lcr = 0x4100;
+	ret = phy_write_paged(phydev, 0xd04, RTL8211F_LCR, val_lcr);
+	if (ret < 0) {
+		dev_err(dev, "led configuration failed: %pe\n",
+			ERR_PTR(ret));
+		return ret;
 	}
 
 	return 0;
