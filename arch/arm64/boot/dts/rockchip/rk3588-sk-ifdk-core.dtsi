@@ -240,38 +240,6 @@
 			};
 		};
 	};
-
-	rom0: m24m02@50 {
-		compatible = "st,24c512", "atmel,24c512";
-		reg = <0x50>;
-		#address-cells = <2>;
-		#size-cells = <1>;
-		pagesize = <256>;
-	};
-
-	rom1: m24m02@51 {
-		compatible = "st,24c512", "atmel,24c512";
-		reg = <0x51>;
-		#address-cells = <2>;
-		#size-cells = <1>;
-		pagesize = <256>;
-	};
-
-	rom2: m24m02@52 {
-		compatible = "st,24c512", "atmel,24c512";
-		reg = <0x52>;
-		#address-cells = <2>;
-		#size-cells = <1>;
-		pagesize = <256>;
-	};
-
-	rom3: m24m02@53 {
-		compatible = "st,24c512", "atmel,24c512";
-		reg = <0x53>;
-		#address-cells = <2>;
-		#size-cells = <1>;
-		pagesize = <256>;
-	};
 };
 
 &iep {
@@ -432,18 +400,6 @@
 	mmc-hs400-enhanced-strobe;
 	vmmc-supply = <&vcc_3v3_s3>;
 	vqmmc-supply = <&vccio_sd_s0>;
-};
-
-&sfc {
-	status = "okay";
-
-	flash@0 {
-		compatible = "spi-nand";
-		reg = <0>;
-		spi-max-frequency = <104000000>;
-		spi-rx-bus-width = <4>;
-		spi-tx-bus-width = <1>;
-	};
 };
 
 &spdif_tx2 {
