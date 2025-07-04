@@ -1249,7 +1249,6 @@ dsi_pwm: &pwm14 {
 
 &usbdrd_dwc3_1 {
 	status = "okay";
-	dr_mode = "host";
 	snps,xhci-trb-ent-quirk;
 	maximum-speed = "super-speed";
 };
