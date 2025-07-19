@@ -6,6 +6,7 @@
 
 /dts-v1/;
 #include <dt-bindings/input/input.h>
+#include <dt-bindings/phy/phy-snps-pcie3.h>
 #include "rk3588-sk-ifdk-core.dtsi"
 
 / {
@@ -320,6 +321,7 @@
 	vcc3v3_pcie30: vcc3v3-pcie30-regulator {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc3v3_pcie30";
+		regulator-always-on;
 		regulator-boot-on;
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
@@ -1065,22 +1067,22 @@ dsi_i2c: &i2c5 {
 		
 		pcie2x1l0_pins: pcie2x1l0-pins {
 			rockchip,pins = 
-			/* pcie30x1_0_clkreqn_m2 */
-			<1 RK_PB5 4 &pcfg_pull_none>,
-			/* pcie30x1_0_perstn_m2 */
-			<1 RK_PB4 4 &pcfg_pull_none>,
-			/* pcie30x1_0_waken_m2 */
-			<1 RK_PB3 4 &pcfg_pull_none>;
+			/* pcie2x1l0_clkreqn */
+			<1 RK_PB5 RK_FUNC_GPIO &pcfg_pull_up>,
+			/* pcie2x1l0_perstn */
+			<1 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>,
+			/* pcie2x1l0_waken */
+			<1 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 		
 		pcie2x1l1_pins: pcie2x1l1-pins {
 			rockchip,pins = 
-			/* pcie30x1_1_clkreqn_m1 */
-			<4 RK_PA0 4 &pcfg_pull_none>,
-			/* pcie30x1_1_perstn_m1 */
-			<4 RK_PA2 4 &pcfg_pull_none>,
-			/* pcie30x1_1_waken_m1 */
-			<4 RK_PA1 4 &pcfg_pull_none>;
+			/* pcie2x1l1_clkreqn */
+			<4 RK_PA0 RK_FUNC_GPIO &pcfg_pull_up>,
+			/* pcie2x1l1_perstn */
+			<4 RK_PA2 RK_FUNC_GPIO &pcfg_pull_up>,
+			/* pcie2x1l1_waken */
+			<4 RK_PA1 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 	

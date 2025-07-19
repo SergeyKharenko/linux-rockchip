@@ -2363,7 +2363,7 @@
 	};
 
 	gpu: gpu@fb000000 {
-		compatible = "arm,mali-bifrost";
+		compatible = "arm,mali-valhall";
 		reg = <0x0 0xfb000000 0x0 0x200000>;
 		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 93 IRQ_TYPE_LEVEL_HIGH>,
@@ -2377,6 +2377,7 @@
 		assigned-clocks = <&scmi_clk SCMI_CLK_GPU>;
 		assigned-clock-rates = <200000000>;
 		power-domains = <&power RK3588_PD_GPU>;
+		power-off-delay-ms = <200>;
 		operating-points-v2 = <&gpu_opp_table>;
 		#cooling-cells = <2>;
 		dynamic-power-coefficient = <2982>;
