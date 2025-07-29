@@ -487,29 +487,9 @@
 	vop-supply = <&vdd_logic>;
 	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>, <&cru DCLK_VOP2>;
 	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>, <&cru PLL_GPLL>;
-	support-multi-area;
 	disable-win-move;
 };
 
 &vop_mmu {
 	status = "okay";
 };
-
-// &vp0 {
-//     cursor-win-id=<ROCKCHIP_VOP2_ESMART0>;
-// 	rockchip,plane-mask = <(1 << ROCKCHIP_VOP2_CLUSTER1)>;
-// 	rockchip,primary-plane = <ROCKCHIP_VOP2_CLUSTER1>;
-// };
-
-// &vp1 {
-//     cursor-win-id=<ROCKCHIP_VOP2_SMART1>;
-// 	rockchip,plane-mask = <(1 << ROCKCHIP_VOP2_ESMART1)>;
-// 	rockchip,primary-plane = <ROCKCHIP_VOP2_ESMART1>;
-// };
-
-// &vp2 {
-//     cursor-win-id=<ROCKCHIP_VOP2_SMART0>;
-// 	rockchip,plane-mask = <(1 << ROCKCHIP_VOP2_CLUSTER0)>;
-// 	rockchip,primary-plane = <ROCKCHIP_VOP2_CLUSTER0>;
-// };
-
