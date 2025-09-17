@@ -150,21 +150,23 @@
 	vcc5v0_host: vcc5v0-host-regulator {
 		compatible = "regulator-fixed";
 		enable-active-high;
-		gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_host_en>;
 		regulator-name = "vcc5v0_host";
 		regulator-always-on;
 		regulator-boot-on;
+		vin-supply = <&vcc5v0_sys>;
 	};
 
 	vcc5v0_otg: vcc5v0-otg-regulator {
 		compatible = "regulator-fixed";
 		enable-active-high;
-		gpio = <&gpio0 RK_PC6 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_otg_en>;
 		regulator-name = "vcc5v0_otg";
+		vin-supply = <&vcc5v0_sys>;
 	};
 
 	wireless_wlan: wireless-wlan {
@@ -383,7 +385,7 @@
 				regulator-initial-mode = <0x2>;
 				regulator-name = "vdd_logic";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 
@@ -443,7 +445,8 @@
 				regulator-max-microvolt = <900000>;
 				regulator-name = "vdda_0v9";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
+					regulator-suspend-microvolt = <900000>;
 				};
 			};
 
@@ -500,7 +503,8 @@
 				regulator-max-microvolt = <1800000>;
 				regulator-name = "vcca_1v8";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
+					regulator-suspend-microvolt = <1800000>;
 				};
 			};
 
@@ -543,7 +547,7 @@
 				regulator-boot-on;
 				regulator-name = "vcc_3v3";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 
@@ -740,14 +744,14 @@ dsi_i2c: &i2c3 {
 		(0
 		| RKPM_SLP_CENTER_OFF
 		| RKPM_SLP_HW_PLLS_OFF
-		| RKPM_SLP_PMUALIVE_32K
-		| RKPM_SLP_32K_PVTM
 		)
 	>;
 	rockchip,wakeup-config = <
 		(0
+		| RKPM_CPU0_WKUP_EN
 		| RKPM_GPIO_WKUP_EN
 		| RKPM_USB_WKUP_EN
+		| RKPM_USB_LINESTATE_WKUP_EN
 		)
 	>;
 };
@@ -1035,11 +1039,11 @@ dsi_i2c: &i2c3 {
 
 	usb {
 		vcc5v0_host_en: vcc5v0-host-en {
-			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PB7 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
 		vcc5v0_otg_en: vcc5v0-otg-en {
-			rockchip,pins = <0 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 

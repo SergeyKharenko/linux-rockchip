@@ -34,7 +34,7 @@
 	};
 	
 	chosen: chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0";
+		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0 coherent_pool=1m irqchip.gicv3_pseudo_nmi=0";
 	};
 	
 	firmware {
@@ -50,9 +50,9 @@
 		
 		sys_led: sys-led {
 			gpios = <&gpio4 RK_PD7 GPIO_ACTIVE_HIGH>;
-			function = LED_FUNCTION_HEARTBEAT;
+			function = LED_FUNCTION_DISK_ACTIVITY;
 			color = <LED_COLOR_ID_ORANGE>;
-			linux,default-trigger = "heartbeat";
+			linux,default-trigger = "disk-activity";
 			pinctrl-names = "default";
 			pinctrl-0 = <&sys_led_pin>;
 		};
@@ -890,6 +890,8 @@
 	bus-width = <8>;
 	supports-emmc;
 	non-removable;
+	mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
 	vmmc-supply = <&vcc3v3_sd>;
 	vqmmc-supply = <&vccio_sd>;
 	max-frequency = <200000000>;
@@ -944,15 +946,11 @@
 };
 
 &usbdrd30 {
-	status = "okay";
+	status = "disabled";
 };
 
 &usbdrd_dwc3 {
-	status = "okay";
-	dr_mode = "host";
-	extcon = <&usb2phy0>;
-	maximum-speed = "high-speed";
-	snps,dis_u2_susphy_quirk;
+	status = "disabled";
 };
 
 &usbhost30 {
@@ -966,8 +964,7 @@
 };
 
 &u2phy0_otg {
-	vbus-supply = <&vcc5v0_sys>;
-	status = "okay";
+	status = "disabled";
 };
 
 &u2phy0_host {
