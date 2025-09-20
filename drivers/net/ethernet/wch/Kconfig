@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# WCH device configuration
+#
+
+config NET_VENDOR_WCH
+	bool "WCH devices"
+	default y
+	help
+	  If you have a network (Ethernet) card belonging to this class, say Y.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all
+	  the questions about WCH devices. If you say Y, you will be asked
+	  for your specific card in the following selections.
+
+if NET_VENDOR_WCH
+
+config WCH_CH390H
+	tristate "WCH CH390H/D Ethernet support"
+	depends on SPI
+	select CRC32
+	select MDIO
+	select PHYLIB
+	select REGMAP_SPI
+	help
+	  Support for CH390H/D chipset.
+
+	  To compile this driver as a module, choose M here.  The module
+	  will be called ch390h.
+
+	  The SPI mode for the host's SPI master to access CH390H/D is mode
+	  0 on the SPI bus.
+
+config WCH_CH390_DEBUG
+	bool "WCH CH390 sysfs debug support"
+	default n
+
+endif # NET_VENDOR_WCH

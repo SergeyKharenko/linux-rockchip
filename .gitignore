@@ -169,3 +169,8 @@ sphinx_*/
 
 # Rust analyzer configuration
 /rust-project.json
+
+# VSCode cache file
+/.cache/
+/.clangd
+/.vscode-ctags
