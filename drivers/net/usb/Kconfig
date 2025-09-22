@@ -626,7 +626,7 @@ config USB_NET_CH9200
 	  module will be called ch9200.
 
 config USB_NET_CH397
-	tristate "QingHeng CH397 USB ethernet support"
+	tristate "WCH CH397 USB ethernet support"
 	depends on USB_USBNET
 	select MII
 	help

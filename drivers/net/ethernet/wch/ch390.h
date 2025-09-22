@@ -1,11 +1,17 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * SPI ethernet driver for SPI to 100Mbps ethernet chip ch390.
+ * CH390 Ethernet Registers Definitions
+ *
+ * This file defines the registers and associated constants for the
+ * CH390 100Mbps Ethernet controller.
  *
  * Copyright (C) 2024 Nanjing Qinheng Microelectronics Co., Ltd.
- * 				http://wch.cn
- * Author:   	WCH <tech@wch.cn>
- * Contributor: Sergey Kharenko <skharenko@hust.edu.cn>
+ * Author:       WCH <tech@wch.cn>
+ * Contributor:  Sergey Kharenko <skharenko@hust.edu.cn>
+ *
+ * This file is part of the CH390 Ethernet driver. It provides symbolic
+ * names for registers to facilitate driver development and integration
+ * with the Linux networking stack.
  */
 
 #ifndef _CH390_H_
@@ -104,7 +110,6 @@
 #define CH390_EPAR 				0x0C
 
 #define CH390_EPDRL 			0x0D
-
 #define CH390_EPDRH 			0x0E
 
 #define CH390_WCR 				0x0F
@@ -125,19 +130,15 @@
 #define GPR_PHYPD 				(1 << 0) /* PHY power down */
 
 #define CH390_TRPAL 			0x22
-
 #define CH390_TRPAH 			0x23
 
 #define CH390_RWPAL 			0x24
-
 #define CH390_RWPAH 			0x25
 
 #define CH390_VIDL 				0x28
-
 #define CH390_VIDH 				0x29
 
 #define CH390_PIDL 				0x2A
-
 #define CH390_PIDH 				0x2B
 
 #define CH390_CHIPR 			0x2C
@@ -187,6 +188,8 @@
 #define CH390_INTCKCR 			0x54
 
 #define CH390_MPTRCR 			0x55
+#define MPTRCR_RST_TX   		(1<<1) /* Reset TX Memory Pointer */
+#define MPTRCR_RST_RX   		(1<<0) /* Reset RX Memory Pointer */
 
 #define CH390_MLEDCR 			0x57
 #define MLEDCR_LED_MOD3 		(1 << 7)
@@ -195,29 +198,22 @@
 #define MLEDCR_LED_MOD1 		(MLEDCR_LED_MOD3 | MLEDCR_LED_TYPE0)
 
 #define CH390_MRCMDX 			0x70
-
 #define CH390_MRCMDX1 			0x71
-
 #define CH390_MRCMD 			0x72
 
 #define CH390_MRRL 				0x74
-
 #define CH390_MRRH 				0x75
 
 #define CH390_MWCMDX 			0x76
-
 #define CH390_MWCMD 			0x78
 
 #define CH390_MWRL 				0x7A
-
 #define CH390_MWRH 				0x7B
 
 #define CH390_TXPLL 			0x7C
-
 #define CH390_TXPLH 			0x7D
 
 #define CH390_ISR 				0x7E
-#define ISR_IOMODE 				(1 << 7) /* Link status change */
 #define ISR_LNKCHG 				(1 << 5) /* Link status change */
 #define ISR_ROO 				(1 << 3) /* Receive overflow counter overflow */
 #define ISR_ROS 				(1 << 2) /* Receive overflow */
@@ -269,27 +265,8 @@
 #define CH390_PKT_NONE 				0x00 /* No packet received */
 #define CH390_PKT_RDY 				0x01 /* Packet ready to receive */
 #define CH390_PKT_ERR 				0xFE /* Un-stable states mask */
-#define CH390_PKT_ERR_WITH_RCSEN    0xE2 /* Un-stable states mask when RCSEN = 1 */
 #define CH390_PKT_MAX 				1536 /* Received packet max size */
 #define CH390_PKT_MIN 				64	
-
-/*
- * struct ch390_op_stats - rx activities record
- * @status_err_cnt: rx status error counter
- * @large_err_cnt: rx get large packet length error counter
- * @rx_err_cnt: receive packet error counter
- * @tx_err_cnt: transmit packet error counter
- * @fifo_rst_cnt: reset operation counter
- *
- * To keep track for the driver operation statistics
- */
-struct ch390_op_stats {
-	u16 status_err_cnt;
-	u16 large_err_cnt;
-	u16 rx_err_cnt;
-	u16 tx_err_cnt;
-	u16 fifo_rst_cnt;
-};
 
 /*
  * struct ch390_rxhdr - rx packet data header
@@ -315,7 +292,7 @@ struct ch390_rxhdr {
 
 #define CH390_GOTO_ON_ERROR(x, goto_tag, format, ...) do { 										\
 		ret=(x);																				\
-		if(ret) {																				\
+		if(ret<0) {																				\
 			netif_err(db, drv, db->ndev, "%s: "format, __func__);								\
 			goto goto_tag;																		\
 		}																						\
@@ -323,10 +300,39 @@ struct ch390_rxhdr {
 
 #define CH390_RETURN_ON_ERROR(x, format, ...) do { 												\
 		ret=(x);																				\
-		if(ret)																					\
+		if(ret<0)																				\
 			netif_err(db, drv, db->ndev, "%s: "format, __func__);								\
 			return ret; 																		\
 	} while(0)
+
+#ifdef CONFIG_WCH_CH390_DEBUG
+#define CH390_DEBUG_REG_LIST(V) 		  	\
+			V(CH390_NCR)              		\
+			V(CH390_NSR)              		\
+			V(CH390_TCR)              		\
+			V(CH390_TSRA)             		\
+			V(CH390_TSRB)             		\
+			V(CH390_RCR)              		\
+			V(CH390_RSR)              		\
+			V(CH390_ROCR)             		\
+			V(CH390_BPTR)             		\
+			V(CH390_FCTR)             		\
+			V(CH390_FCR)              		\
+			V(CH390_GPR)              		\
+			V(CH390_ATCR)             		\
+			V(CH390_RCSCSR)           		\
+			V(CH390_INTCR)            		\
+			V(CH390_ALNCR)            		\
+			V(CH390_ISR)              		\
+			V(CH390_IMR)
+
+#define CH390_REG_LABEL_GEN(REG) { #REG, REG },
+
+struct ch390_reg_label {
+	const char *name;
+	unsigned int reg;
+};
+#endif
 
 static inline struct board_info *to_ch390_board(struct net_device *ndev)
 {

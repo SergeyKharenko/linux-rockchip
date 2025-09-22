@@ -5,7 +5,7 @@
  * Copyright (C) 2025 Nanjing Qinheng Microelectronics Co., Ltd.
  * 				http://wch.cn
  * Author:   	WCH <tech@wch.cn>
- * Contributor: Sergey Kharenko <skharenko@hust.edu.cn>
+ * Maintainer:  Sergey Kharenko <skharenko@hust.edu.cn>
  */
 
 #include <linux/module.h>
@@ -67,7 +67,7 @@
 
 #define ETH_MIN_DATA_SIZE   			46 /* minimum eth data size */
 #define ETH_MIN_PACKET_SIZE 			(ETH_HEADER_SIZE + ETH_MIN_DATA_SIZE)
-			
+
 #define ETH_DEF_DATA_SIZE   			1500 /* default data size */
 #define ETH_DEF_PACKET_SIZE 			(ETH_HEADER_SIZE + ETH_DEF_DATA_SIZE)
 
@@ -920,8 +920,6 @@ static int ch397_probe(struct usb_interface *intf, const struct usb_device_id *i
 		usb_driver_set_configuration(udev, 1);
 		return -ENODEV;
 	}
-
-	printk(KERN_INFO "ch397 device probe, driver version: %s\n", VERSION_DESC);
 
 	return usbnet_probe(intf, id);
 }
