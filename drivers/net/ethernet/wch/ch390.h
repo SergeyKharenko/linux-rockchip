@@ -265,6 +265,7 @@
 #define CH390_PKT_NONE 				0x00 /* No packet received */
 #define CH390_PKT_RDY 				0x01 /* Packet ready to receive */
 #define CH390_PKT_ERR 				0xFE /* Un-stable states mask */
+#define CH390_PKT_ERR_WITH_RCSEN 	0xE2 /* Un-stable states mask when RCSEN = 1 */
 #define CH390_PKT_MAX 				1536 /* Received packet max size */
 #define CH390_PKT_MIN 				64	
 

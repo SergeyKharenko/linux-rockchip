@@ -83,6 +83,7 @@ struct board_info {
 	u8 rcr_all;
 	bool has_eeprom;
 	bool irq_posedge;
+	bool rxcsum;
 };
 
 /**
@@ -529,6 +530,17 @@ static int ch390h_init_mac_addr(struct net_device *ndev, struct board_info *db)
 	return 0;
 }
 
+static int ch390h_init_hw_offload(struct board_info *db) 
+{
+	int ret;
+
+	CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_TCSCR, TCSCR_ALL), 
+						"write TCSCR failed\n");
+	CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_RCSCSR, RCSCSR_RCSEN | RCSCSR_DCSE), 
+						"write RCSCSR failed\n");
+	return 0;
+} 
+
 /*
  * Ethtool operations
  */
@@ -834,7 +846,8 @@ static int ch390h_receive(struct board_info *db, struct sk_buff *skb)
 	CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_MRCMDX, &ready), "read MRCMDX failed\n");
 	CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_MRCMDX, &ready), "read MRCMDX failed\n");
 
-	if (ready & CH390_PKT_ERR) {
+	if ((!db->rxcsum && (ready & CH390_PKT_ERR)) || 
+		(db->rxcsum && (ready & CH390_PKT_ERR_WITH_RCSEN))) {
 		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_RCR, 0),"write RCR failed\n");
 		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_MPTRCR, MPTRCR_RST_RX),"write MPTRCR failed\n");
 		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_MRRH, 0x0C),"write MRRH failed\n");
@@ -1216,6 +1229,49 @@ static void ch390h_get_stats(struct net_device *ndev, struct rtnl_link_stats64 *
 	} while (u64_stats_fetch_retry(&db->syncp, start));
 }
 
+static int ch390h_set_features(struct net_device *dev, netdev_features_t features) {
+	struct board_info *db = to_ch390_board(ndev);
+	int ret = 0;
+	int ncr;
+	int tcscr;
+	int rcscsr;
+
+	if(features & NETIF_F_LOOPBACK){
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_NCR, &ncr), "read NCR failed\n");
+		ncr |= NCR_LBK_MAC;
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_NCR, ncr), "write NCR failed\n");
+	}
+	else {
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_NCR, &ncr), "read NCR failed\n");
+		ncr &= ~NCR_LBK_MAC;
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_NCR, ncr), "write NCR failed\n");
+	}
+
+	if(features & NETIF_F_HW_CSUM) {
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_TCSCR, &tcscr), "read TCSCR failed\n");
+		tcscr |= TCSCR_ALL;
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_TCSCR, tcscr), "write TCSCR failed\n");
+	}
+	else {
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_TCSCR, &tcscr), "read TCSCR failed\n");
+		tcscr &= ~TCSCR_ALL;
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_TCSCR, tcscr), "write TCSCR failed\n");
+	}
+
+	if(features & NETIF_F_RXCSUM) {
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_RCSCSR, &rcscsr), "read RCSCSR failed\n");
+		rcscsr |= (RCSCSR_RCSEN | RCSCSR_DCSE);
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_RCSCSR, rcscsr), "write RCSCSR failed\n");
+		db->rxcsum = true;
+	}
+	else {
+		CH390_RETURN_ON_ERROR(ch390h_io_register_read(db, CH390_RCSCSR, &rcscsr), "read RCSCSR failed\n");
+		rcscsr &= ~(RCSCSR_RCSEN | RCSCSR_DCSE);
+		CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_RCSCSR, rcscsr), "write RCSCSR failed\n");
+		db->rxcsum = false;
+	}
+}
+
 static const struct net_device_ops ch390h_netdev_ops = {
 	.ndo_open = ch390h_open,
 	.ndo_stop = ch390h_close,
@@ -1223,7 +1279,8 @@ static const struct net_device_ops ch390h_netdev_ops = {
 	.ndo_set_rx_mode = ch390h_set_rx_mode,
 	.ndo_validate_addr = eth_validate_addr,
 	.ndo_set_mac_address = ch390h_set_mac_address,
-	.ndo_get_stats64 = ch390h_get_stats
+	.ndo_get_stats64 = ch390h_get_stats,
+	.ndo_set_features = ch390h_set_features
 };
 
 /**
@@ -1482,9 +1539,12 @@ static int ch390h_probe(struct spi_device *spi)
 	db->msg_enable = 0;
 	db->spidev = spi;
 	db->ndev = ndev;
+	db->rxcsum = true;
 
 	ndev->netdev_ops = &ch390h_netdev_ops;
 	ndev->ethtool_ops = &ch390h_ethtool_ops;
+	ndev->features = NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
+	ndev->hw_features =  | NETIF_F_LOOPBACK;
 
 	mutex_init(&db->spi_lockm);
 	mutex_init(&db->reg_mutex);

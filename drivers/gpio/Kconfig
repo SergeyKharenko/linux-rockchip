@@ -1213,6 +1213,23 @@ config GPIO_CRYSTAL_COVE
 	  This driver can also be built as a module. If so, the module will be
 	  called gpio-crystalcove.
 
+config GPIO_CH42X
+	tristate "WCH CH422/423 GPIO"
+	select REGMAP_I2C
+	help
+	  Say yes here to enable the GPIO driver for the WCH CH42x chip. Compatible
+	  models include:
+	  8 bits:  		CH422
+	  16 bits: 		CH423
+
+config GPIO_CH42X_IRQ
+	bool "Interrupt controller support for CH42x"
+	depends on GPIO_CH42X
+	select GPIOLIB_IRQCHIP
+	help
+	  Say yes here to enable the ch42x to be used as an interrupt
+	  controller.
+
 config GPIO_CS5535
 	tristate "AMD CS5535/CS5536 GPIO support"
 	depends on X86 || MIPS || COMPILE_TEST
