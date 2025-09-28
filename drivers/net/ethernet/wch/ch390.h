@@ -178,6 +178,7 @@
 #define CH390_ALNCR 			0x4A
 
 #define CH390_SCCR 				0x50
+#define SCCR_DIS_CLK			0x01
 
 #define CH390_RSCCR 			0x51
 

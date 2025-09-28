@@ -123,6 +123,25 @@ config LEDS_BCM6358
 	  This option enables support for LEDs connected to the BCM6358
 	  LED HW controller accessed via MMIO registers.
 
+config LEDS_CH42X
+	tristate "LED Support for Broadcom BCM6358"
+	depends on LEDS_CLASS
+	depends on I2C && INPUT
+	help
+	  This option enables support for WCH CH422/423
+	  LED controller. It is generally only useful
+	  as a platform driver
+
+config LEDS_CH42X_GPIO
+	bool "Enable GPIO support for CH422/423"
+	depends on LEDS_CH42X
+	depends on GPIOLIB
+	help
+	  Allow unused pins on CH422/423 to be used as gpio.
+
+	  To use a pin as gpio ch42x_type in ch42x_platform data needs to
+	  set to CH42X_TYPE_GPIO.
+
 config LEDS_CPCAP
 	tristate "LED Support for Motorola CPCAP"
 	depends on LEDS_CLASS

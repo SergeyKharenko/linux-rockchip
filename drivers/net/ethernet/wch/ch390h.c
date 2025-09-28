@@ -13,6 +13,8 @@
  * through the standard net_device interface.
  */
 
+#include "linux/delay.h"
+#include "linux/device.h"
 #include <linux/crc32.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -1230,7 +1232,7 @@ static void ch390h_get_stats(struct net_device *ndev, struct rtnl_link_stats64 *
 }
 
 static int ch390h_set_features(struct net_device *dev, netdev_features_t features) {
-	struct board_info *db = to_ch390_board(ndev);
+	struct board_info *db = to_ch390_board(dev);
 	int ret = 0;
 	int ncr;
 	int tcscr;
@@ -1544,7 +1546,7 @@ static int ch390h_probe(struct spi_device *spi)
 	ndev->netdev_ops = &ch390h_netdev_ops;
 	ndev->ethtool_ops = &ch390h_ethtool_ops;
 	ndev->features = NETIF_F_HW_CSUM | NETIF_F_RXCSUM;
-	ndev->hw_features =  | NETIF_F_LOOPBACK;
+	ndev->hw_features = ndev->features | NETIF_F_LOOPBACK;
 
 	mutex_init(&db->spi_lockm);
 	mutex_init(&db->reg_mutex);
@@ -1616,8 +1618,32 @@ static void ch390h_remove(struct spi_device *spi)
 #endif
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int ch390h_suspend(struct device *dev)
+{
+	struct net_device *ndev = dev_get_drvdata(dev);
+	struct board_info *db = to_ch390_board(ndev);
+	int ret;
+
+	CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_SCCR, SCCR_DIS_CLK), "write SCCR failed\n");
+	return 0;
+}
+
+static int ch390h_resume(struct device *dev)
+{
+	struct net_device *ndev = dev_get_drvdata(dev);
+	struct board_info *db = to_ch390_board(ndev);
+	int ret;
+
+	CH390_RETURN_ON_ERROR(ch390h_io_register_write(db, CH390_RSCCR, 0x00), "write RSCCR failed\n");
+	msleep(2);
+	return 0;
+}
+#endif
+SIMPLE_DEV_PM_OPS(ch390h_pm_ops, ch390h_suspend, ch390h_resume);
+
 static const struct of_device_id ch390h_match_table[] = { 
-	{ .compatible = "wch,ch390h" }, 
+	{ .compatible = "wch,ch390h" },
 	{ .compatible = "wch,ch390d" },
 	{} 
 };
@@ -1632,6 +1658,7 @@ static struct spi_driver ch390h_driver = {
 	.driver = {
 		.name = DRVNAME_CH390H,
 		.of_match_table = ch390h_match_table,
+		.pm = &ch390h_pm_ops
 	},
 	.probe = ch390h_probe,
 	.remove = ch390h_remove,
