@@ -334,7 +334,6 @@
 
 &rkvdec0 {
 	status = "okay";
-	vdec-supply = <&vdd_vdenc_s0>;
 };
 
 &rkvdec0_mmu {
@@ -343,7 +342,6 @@
 
 &rkvdec1 {
 	status = "okay";
-	vdec-supply = <&vdd_vdenc_s0>;
 };
 
 &rkvdec1_mmu {
@@ -356,7 +354,6 @@
 
 &rkvenc0 {
 	status = "okay";
-	venc-supply = <&vdd_vdenc_s0>;
 };
 
 &rkvenc0_mmu {
@@ -365,7 +362,6 @@
 
 &rkvenc1 {
 	status = "okay";
-	venc-supply = <&vdd_vdenc_s0>;
 };
 
 &rkvenc1_mmu {
