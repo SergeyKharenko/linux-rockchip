@@ -10,6 +10,7 @@
 #include <dt-bindings/display/rockchip_vop.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/input/rk-input.h>
+#include <dt-bindings/leds/common.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include <dt-bindings/pwm/pwm.h>
 #include <dt-bindings/sensor-dev.h>
@@ -83,22 +84,26 @@
 		compatible = "regulator-fixed";
 		regulator-name = "vcc_lcd0";
 		regulator-boot-on;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd0_pwren>;
+		gpios = <&gpio0 RK_PC7 GPIO_ACTIVE_HIGH>;
 		regulator-state-mem {
 			regulator-off-in-suspend;
 		};
-		gpio = <&gpio0 RK_PC7 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
 	};
 
 	vcc_lcd1: vcc-lcd1 {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc_lcd1";
 		regulator-boot-on;
+		enable-active-high;
+		pinctrl-names = "default";
+		pinctrl-0 = <&lcd1_pwren>;
+		gpios = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
 		regulator-state-mem {
 			regulator-off-in-suspend;
 		};
-		gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
 	};
 
 	vcc3v3_minipcie: vcc3v3-minipcie-regulator {
@@ -106,8 +111,10 @@
 		regulator-name = "vcc3v3_minipcie";
 		regulator-boot-on;
 		regulator-min-microvolt = <3300000>;
-		regulator-max-microvolt = <3300000>;
-		gpio = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
+		regulator-max-microvolt = <3300000>;		
+		pinctrl-names = "default";
+		pinctrl-0 = <&minipcie_pwren>;
+		gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
 		vin-supply = <&dc_12v>;
 	};
 
@@ -119,7 +126,7 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		gpio = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_usb>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_host_en>;
@@ -131,7 +138,7 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		gpio = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_usb>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_otg_en>;
@@ -145,7 +152,7 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		gpio = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
+		gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_usb>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_host20_en>;
@@ -362,11 +369,25 @@
 		lcd1_rst: lcd1-rst {
 			rockchip,pins = <4 RK_PC6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+
+		lcd0_pwren: lcd0-pwren {
+			rockchip,pins = <0 RK_PC7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		lcd1_pwren: lcd1-pwren {
+			rockchip,pins = <0 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
 	};
 
 	leds {
 		sys_led_pin: sys-led-pin {
 			rockchip,pins = <0 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
+	minipcie {
+		minipcie_pwren: minipcie-pwren {
+			rockchip,pins = <3 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 

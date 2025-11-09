@@ -248,6 +248,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-radxa-e25.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-rock-3a.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-sk-svo.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-sk-roce.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-sk-ifdk-lite.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-sk-ifdk-slim.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-toybrick-sd0-android.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-toybrick-sd0-linux.dtb
