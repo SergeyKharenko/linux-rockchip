@@ -17,6 +17,40 @@
 		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0 coherent_pool=1m irqchip.gicv3_pseudo_nmi=0";
 	};
     
+    gpu_pf_opp_table: opp-table-2 {
+        compatible = "operating-points-v2";
+
+        opp-200000000 {
+            opp-hz = /bits/ 64 <200000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-300000000 {
+            opp-hz = /bits/ 64 <300000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-400000000 {
+            opp-hz = /bits/ 64 <400000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-600000000 {
+            opp-hz = /bits/ 64 <600000000>;
+            opp-microvolt = <900000 900000 1000000>;
+        };
+
+        opp-700000000 {
+            opp-hz = /bits/ 64 <700000000>;
+            opp-microvolt = <950000 950000 1000000>;
+        };
+
+        opp-800000000 {
+            opp-hz = /bits/ 64 <800000000>;
+            opp-microvolt = <1000000 1000000 1000000>;
+        };
+    };
+
     vcc5v0_sys: vcc5v0-sys {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc5v0_sys";
@@ -66,7 +100,10 @@
 };
 
 &gpu {
-	mali-supply = <&vdd_gpu>;
+    operating-points-v2 = <&gpu_pf_opp_table>;
+    interrupt-names = "gpu", "mmu", "job";
+    mali-supply = <&vdd_gpu>;
+    mem-supply = <&vdd_gpu>;
 	status = "okay";
 };
 
@@ -88,6 +125,20 @@
 		regulator-always-on;
 		regulator-state-mem {
 			regulator-off-in-suspend;
+		};
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		rknpu_reserved: rknpu {
+			compatible = "shared-dma-pool";
+			inactive;
+			reusable;
+			size = <0x0 0x20000000>;
+			alignment = <0x0 0x1000>;
 		};
 	};
 
@@ -432,8 +483,10 @@
 
 &pmu_io_domains {
 	status = "okay";
+	pmuio1-supply = <&vcc3v3_pmu>;
 	pmuio2-supply = <&vcc3v3_pmu>;
 	vccio1-supply = <&vccio_acodec>;
+	vccio2-supply = <&vcc_1v8>;
 	vccio3-supply = <&vccio_sd>;
 	vccio4-supply = <&vcc_1v8>;
 	vccio5-supply = <&vcc_3v3>;
@@ -463,6 +516,7 @@
 };
 
 &rknpu {
+	memory-region = <&rknpu_reserved>;
 	rknpu-supply = <&vdd_npu>;
 	status = "okay";
 };
@@ -511,8 +565,10 @@
 
 &vop {
 	status = "okay";
+	vop-supply = <&vdd_logic>;
 	assigned-clocks = <&cru DCLK_VOP0>, <&cru DCLK_VOP1>, <&cru DCLK_VOP2>;
 	assigned-clock-parents = <&pmucru PLL_HPLL>, <&cru PLL_VPLL>, <&cru PLL_GPLL>;
+	disable-win-move;
 };
 
 &vop_mmu {
