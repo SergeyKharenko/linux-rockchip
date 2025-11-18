@@ -17,6 +17,40 @@
 		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0 coherent_pool=1m irqchip.gicv3_pseudo_nmi=0";
 	};
 
+    gpu_pf_opp_table: opp-table-2 {
+        compatible = "operating-points-v2";
+
+        opp-200000000 {
+            opp-hz = /bits/ 64 <200000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-300000000 {
+            opp-hz = /bits/ 64 <300000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-400000000 {
+            opp-hz = /bits/ 64 <400000000>;
+            opp-microvolt = <850000 850000 1000000>;
+        };
+
+        opp-600000000 {
+            opp-hz = /bits/ 64 <600000000>;
+            opp-microvolt = <900000 900000 1000000>;
+        };
+
+        opp-700000000 {
+            opp-hz = /bits/ 64 <700000000>;
+            opp-microvolt = <950000 950000 1000000>;
+        };
+
+        opp-800000000 {
+            opp-hz = /bits/ 64 <800000000>;
+            opp-microvolt = <1000000 1000000 1000000>;
+        };
+    };
+
     vcc3v3_sys: vcc3v3-sys {
         compatible = "regulator-fixed";
         regulator-name = "vcc3v3_sys";
@@ -60,6 +94,8 @@
 };
 
 &gpu {
+    operating-points-v2 = <&gpu_pf_opp_table>;
+    interrupt-names = "gpu", "mmu", "job";
     mali-supply = <&vdd_gpu>;
     mem-supply = <&vdd_gpu>;
     status = "okay";
@@ -453,12 +489,14 @@
 };
 
 &sdhci {
-    vmmc-supply = <&vcc3v3_sd>;
-    vqmmc-supply = <&vccio_sd>;
     bus-width = <8>;
     supports-emmc;
     non-removable;
+    mmc-hs400-1_8v;
+	mmc-hs400-enhanced-strobe;
     max-frequency = <200000000>;
+	vmmc-supply = <&vcc_1v8>;
+	vqmmc-supply = <&vcc_1v8>;
     status = "okay";
 };
 
