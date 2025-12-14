@@ -1,0 +1,466 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+* Copyright (c) 2025 Sergey Kharenko
+*/
+
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/display/drm_mipi_dsi.h>
+#include <dt-bindings/display/rockchip_vop.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+
+/ {
+	metadata {
+		title ="Enable SK IFDK Lite Display 8 with Touchpad";
+		compatible = "sk,ifdk-lite";
+		category = "display";
+		exclusive = "dsi1";
+		description = "Enable SK IFDK Lite Display 8 with Touchpad.";
+	};
+
+    fragment@0 {
+		target-path = "/";
+
+        __overlay__ {
+            lcd1_backlight: lcd1-backlight {
+                compatible = "pwm-backlight";
+                brightness-levels = <
+                    0  20  20  21  21  22  22  23
+                    23  24  24  25  25  26  26  27
+                    27  28  28  29  29  30  30  31
+                    31  32  32  33  33  34  34  35
+                    35  36  36  37  37  38  38  39
+                    40  41  42  43  44  45  46  47
+                    48  49  50  51  52  53  54  55
+                    56  57  58  59  60  61  62  63
+                    64  65  66  67  68  69  70  71
+                    72  73  74  75  76  77  78  79
+                    80  81  82  83  84  85  86  87
+                    88  89  90  91  92  93  94  95
+                    96  97  98  99 100 101 102 103
+                    104 105 106 107 108 109 110 111
+                    112 113 114 115 116 117 118 119
+                    120 121 122 123 124 125 126 127
+                    128 129 130 131 132 133 134 135
+                    136 137 138 139 140 141 142 143
+                    144 145 146 147 148 149 150 151
+                    152 153 154 155 156 157 158 159
+                    160 161 162 163 164 165 166 167
+                    168 169 170 171 172 173 174 175
+                    176 177 178 179 180 181 182 183
+                    184 185 186 187 188 189 190 191
+                    192 193 194 195 196 197 198 199
+                    200 201 202 203 204 205 206 207
+                    208 209 210 211 212 213 214 215
+                    216 217 218 219 220 221 222 223
+                    224 225 226 227 228 229 230 231
+                    232 233 234 235 236 237 238 239
+                    240 241 242 243 244 245 246 247
+                    248 249 250 251 252 253 254 255
+                >;
+                default-brightness-level = <200>;
+                power-supply = <&vcc5v0_sys>;
+                pwms = <&lcd1_bl_pwm 0 20000 0>;
+            };
+        };
+    };
+
+    fragment@1 {
+        target = <&dsi1>;
+
+        __overlay__ {
+            status = "okay";
+            #address-cells = <1>;
+			#size-cells = <0>;
+
+            dsi1_panel: main-panel@0 {
+                compatible = "simple-panel-dsi";
+                reg = <0>;
+                rotation = <270>;
+                power-supply = <&vcc_lcd1>;
+                backlight = <&lcd1_backlight>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&lcd1_rst>;
+                reset-gpios = <&gpio4 RK_PC6 GPIO_ACTIVE_LOW>;
+                panel-name = "AML08012001920-01";
+                reset-delay-ms = <20>;
+                enable-delay-ms = <10>;
+                prepare-delay-ms = <10>;
+                unprepare-delay-ms = <10>;
+                disable-delay-ms = <60>;
+                init-delay-ms = <200>;
+                dsi,flags = <(MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST |
+                        MIPI_DSI_MODE_LPM | MIPI_DSI_MODE_NO_EOT_PACKET)>;
+                dsi,format = <MIPI_DSI_FMT_RGB888>;
+                dsi,lanes  = <4>;
+                panel-init-sequence = [
+                    05 0A 01 10
+
+                    13 00 02 B0 05
+                    13 00 02 B3 52
+                    13 00 02 B0 01
+                    13 00 02 C8 00
+                    13 00 02 C9 00
+                    13 00 02 CC 26
+                    13 00 02 CD 26
+                    13 00 02 DC 00
+                    13 00 02 DD 00
+                    13 00 02 E0 26
+                    13 00 02 E1 26
+                    13 00 02 B0 03 
+                    13 00 02 C3 2A 
+                    13 00 02 E7 2A 
+                    13 00 02 C5 2A 
+                    13 00 02 DE 2A 
+                    13 00 02 B0 00
+                    13 00 02 B6 03
+                    13 00 02 BA 87
+                    13 00 02 BD 78
+                    13 00 02 BF 15
+                    13 00 02 C0 12 
+                    13 00 02 C2 0C 
+                    13 00 02 C3 02 
+                    13 00 02 C4 0C 
+                    13 00 02 C5 02
+                    13 00 02 B0 06 
+                    13 00 02 C0 A5 
+                    13 00 02 D5 20
+                    13 00 02 C0 00
+                    13 00 02 B0 02
+                    13 00 02 C0 00
+                    13 00 02 C1 02
+                    13 00 02 C2 06
+                    13 00 02 C3 16 
+                    13 00 02 C4 0e 
+                    13 00 02 C5 18
+                    13 00 02 C6 26
+                    13 00 02 C7 32 
+                    13 00 02 C8 3F 
+                    13 00 02 C9 3F 
+                    13 00 02 CA 3F 
+                    13 00 02 CB 3F 
+                    13 00 02 CC 3D 
+                    13 00 02 CD 2F 
+                    13 00 02 CE 2F 
+                    13 00 02 CF 2F 
+                    13 00 02 D0 07
+                    13 00 02 D2 00
+                    13 00 02 D3 02
+                    13 00 02 D4 06
+
+                    13 00 02 D5 12
+                    13 00 02 D6 0A
+                    13 00 02 D7 14
+                    13 00 02 D8 22
+                    13 00 02 D9 2E
+                    13 00 02 DA 3D
+                    13 00 02 DB 3F
+                    13 00 02 DC 3F
+                    13 00 02 DD 3F
+                    13 00 02 DE 3D
+                    13 00 02 DF 2F
+                    13 00 02 E0 2F
+                    13 00 02 E1 2F
+                    13 00 02 E2 07
+                    13 00 02 B0 07
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+                    13 00 02 C7 FB
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 00 02 CE FF
+                    13 00 02 B0 08
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+                    13 00 02 C7 FB
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 00 02 CE FF
+                    13 00 02 B0 09
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+                    13 00 02 C7 FB
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 00 02 CE FF
+
+                    13 00 02 B0 0A
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+                    13 00 02 C7 FC
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 00 02 CE FF
+                    13 00 02 B0 0B
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+
+                    13 00 02 C7 FC
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 00 02 CE FF
+                    13 00 02 B0 0C
+                    13 00 02 B1 00
+                    13 00 02 B2 19
+                    13 00 02 B3 31
+                    13 00 02 B4 5A
+                    13 00 02 B5 7C
+                    13 00 02 B6 9C
+                    13 00 02 B7 D3
+                    13 00 02 B8 0E
+                    13 00 02 B9 7D
+                    13 00 02 BA E0
+                    13 00 02 BB 7A
+                    13 00 02 BC E6
+                    13 00 02 BD E9
+                    13 00 02 BE 41
+                    13 00 02 BF 91
+                    13 00 02 C0 B0
+                    13 00 02 C1 CF
+                    13 00 02 C2 DC
+                    13 00 02 C3 E9
+                    13 00 02 C4 EF
+                    13 00 02 C5 F5
+                    13 00 02 C6 FA
+                    13 00 02 C7 FC
+                    13 00 02 C8 FC
+                    13 00 02 C9 00
+                    13 00 02 CA 01
+                    13 00 02 CB 5A
+                    13 00 02 CC BF
+                    13 00 02 CD FF
+                    13 0A 02 CE FF
+
+                    05 64 01 11
+                    05 32 01 29
+                ];
+                panel-exit-sequence = [
+                    05 00 01 28
+                    05 00 01 10
+                ];
+                display-timings {
+                    native-mode = <&dsi1_timing0>;
+                    dsi1_timing0: timing0 {
+                        clock-frequency = <156800000>;
+                        hactive = <1200>;
+                        vactive = <1920>;
+                        hfront-porch = <110>;
+                        hsync-len = <1>;
+                        hback-porch = <32>;
+                        vfront-porch = <11>;
+                        vsync-len = <1>;
+                        vback-porch = <14>;
+                        hsync-active = <0>;
+                        vsync-active = <0>;
+                        de-active = <0>;
+                        pixelclk-active = <1>;
+                    };
+                };
+                ports {
+                    #address-cells = <1>;
+                    #size-cells = <0>;
+                    port@0 {
+                        reg = <0>;
+                        panel_in_dsi1: endpoint {
+                            remote-endpoint = <&dsi1_out_panel>;
+                        };
+                    };
+                };
+            };
+
+            ports {
+                #address-cells = <1>;
+                #size-cells = <0>;
+
+                dsi1_out: port@1 {
+                    reg = <1>;
+                    dsi1_out_panel: endpoint {
+                        remote-endpoint = <&panel_in_dsi1>;
+                    };
+                };
+            };
+        };
+    };
+
+    fragment@2 {
+        target = <&dsi1_in_vp0>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@3 {
+        target = <&lcd1_bl_pwm>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@4 {
+        target = <&route_dsi1>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@5 {
+        target = <&video_phy1>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+    
+    fragment@6 {
+        target = <&dsi_i2c>;
+
+        __overlay__ {
+            status = "okay";
+            clock-frequency = <400000>;
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            dsi1_gt911: dsi1-gt911@5d {
+                compatible = "goodix,gt911";
+                reg = <0x5d>;
+                AVDD28-supply = <&vcc_3v3_s0>;
+                VDDIO-supply = <&vcc_3v3_s0>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&touch_gpio>;
+                interrupts = <RK_PB5 IRQ_TYPE_EDGE_FALLING>;
+                interrupt-parent = <&gpio0>;
+                irq-gpios = <&gpio0 RK_PB5 GPIO_ACTIVE_HIGH>;
+                reset-gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+                touchscreen-size-x = <1200>;
+                touchscreen-size-y = <1920>;
+            };
+        };
+    };
+};

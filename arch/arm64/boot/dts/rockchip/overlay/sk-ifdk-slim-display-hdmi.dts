@@ -1,0 +1,57 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+* Copyright (c) 2025 Sergey Kharenko
+*/
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	metadata {
+		title ="Enable SK IFDK Slim Display HDMI";
+		compatible = "sk,ifdk-lite";
+		category = "display";
+		exclusive = "hdmi";
+		description = "Enable SK IFDK Slim Display HDMI.";
+	};
+
+    fragment@0 {
+        target = <&hdmi>;
+
+        __overlay__ {
+            status = "okay";
+            cec-enable = "true";
+            rockchip,phy-table =
+                <92812500  0x8009 0x0000 0x0270>,
+                <165000000 0x800b 0x0000 0x026d>,
+                <185625000 0x800b 0x0000 0x01ed>,
+                <297000000 0x800b 0x0000 0x01ad>,
+                <594000000 0x8029 0x0000 0x0088>,
+                <000000000 0x0000 0x0000 0x0000>;
+        };
+    };
+
+    fragment@1 {
+        target = <&hdmi_in_vp1>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@2 {
+        target = <&hdmi_sound>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@3 {
+        target = <&route_hdmi>;
+
+        __overlay__ {
+            status = "okay";
+        };
+    };
+};
