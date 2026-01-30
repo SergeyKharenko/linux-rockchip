@@ -281,6 +281,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rk3568-uart9-m1.dtbo \
 	rk3568-w1-gpio3-a5.dtbo \
 	rk3568-w1-gpio3-d1.dtbo \
+	sk-ifdk-display-dsi0-8.dtbo \
 	sk-ifdk-lite-display-dsi1-8.dtbo \
 	sk-ifdk-lite-display-hdmi.dtbo \
 	sk-ifdk-slim-display-dsi0-7.dtbo \
