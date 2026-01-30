@@ -447,11 +447,11 @@
             #address-cells = <1>;
             #size-cells = <0>;
 
-            dsi1_gt911: dsi1-gt911@5d {
+            dsi1_gt911: dsi1-gt911@14 {
                 compatible = "goodix,gt911";
-                reg = <0x5d>;
-                AVDD28-supply = <&vcc_3v3_s0>;
-                VDDIO-supply = <&vcc_3v3_s0>;
+                reg = <0x14>;
+                AVDD28-supply = <&vcc_3v3>;
+                VDDIO-supply = <&vcc_3v3>;
                 pinctrl-names = "default";
                 pinctrl-0 = <&touch_gpio>;
                 interrupts = <RK_PB5 IRQ_TYPE_EDGE_FALLING>;

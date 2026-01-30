@@ -384,16 +384,10 @@ dsi_i2c: &i2c1 {
 		};
 	};
 
-	speader {
+	speaker {
 		/omit-if-no-ref/
 		spk_en: spk-en {
 			rockchip,pins = <3 RK_PC5 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
-
-	sdio-pwrseq {
-		wifi_enable_h: wifi-enable-h {
-			rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
