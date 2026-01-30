@@ -1,0 +1,84 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+* Copyright (c) 2026 Sergey Kharenko
+*/
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	metadata {
+		title ="Enable SK Experiment Platform 0 Display VGA";
+		compatible = "sk,epf0";
+		category = "display";
+		exclusive = "rgb";
+		description = "Enable SK Experiment Platform 0 Display VGA.";
+	};
+
+    fragment@0 {
+		target-path = "/";
+
+        __overlay__ {
+            vga_panel: panel {
+                compatible = "simple-panel";
+                bus-format = <0x1009>;
+
+                display-timings {
+                    native-mode = <&vga_timing>;
+                    vga_timing: timing0 {
+                        clock-frequency = <148500000>;
+                        hactive = <1920>;
+                        vactive = <1080>;
+                        hback-porch = <148>;
+                        hfront-porch = <88>;
+                        vback-porch = <36>;
+                        vfront-porch = <4>;
+                        hsync-len = <54>;
+                        vsync-len = <5>;
+                        hsync-active = <0>;
+                        vsync-active = <0>;
+                        de-active = <0>;
+                        pixelclk-active = <0>;
+                    };
+                };
+
+                port {
+                    panel_in_rgb: endpoint {
+                        remote-endpoint = <&rgb_out_panel>;
+                    };
+                };
+            };
+        };
+    };
+
+    fragment@1 {
+        target = <&rgb>;
+        __overlay__ {
+            status = "okay";
+            pinctrl-0 = <&rgb666_pins>;
+            ports {
+                port@1 {
+                    reg = <1>;
+                    rgb_out_panel: endpoint {
+                        remote-endpoint = <&panel_in_rgb>;
+                    };
+                };
+            };
+        };
+    };
+
+    fragment@2 {
+        target = <&rgb_in_vp0>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
+
+    fragment@3 {
+        target = <&route_rgb>;
+        __overlay__ {
+            status = "okay";
+            connect = <&vp0_out_rgb>;
+        };
+    };
+};
