@@ -1,0 +1,194 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2026 Sergey Kharenko
+ * Copyright (c) 2021 Rockchip Electronics Co., Ltd.
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pwm/pwm.h>
+#include <dt-bindings/pinctrl/rockchip.h>
+#include <dt-bindings/input/rk-input.h>
+#include <dt-bindings/sensor-dev.h>
+#include "rk3588.dtsi"
+#include "rk3588-rk806-single.dtsi"
+#include "rk3588-linux.dtsi"
+
+/ {
+    model = "Fast Hardware Perf Emulator Board";
+    compatible = "fhpe, rk3588", "rockchip,rk3588";
+
+    chosen: chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xfeb50000 console=ttyFIQ0 coherent_pool=1m irqchip.gicv3_pseudo_nmi=0";
+	};
+    
+    fan: sys-fan {
+		status = "okay";
+		compatible = "gpio-fan";
+		fan-supply = <&vcc5v0_sys>;
+        gpio-fan,speed-map = <0 1>, <1 1>;
+		gpios = <&gpio4 RK_PA7 GPIO_ACTIVE_HIGH>;
+        pinctrl-names = "default";
+		pinctrl-0 = <&sys_fan_pin>;
+	};
+};
+
+&cpu_l0 {
+	cpu-supply = <&vdd_cpu_lit_s0>;
+	mem-supply = <&vdd_cpu_lit_mem_s0>;
+};
+
+&cpu_b0 {
+	cpu-supply = <&vdd_cpu_big0_s0>;
+	mem-supply = <&vdd_cpu_big0_mem_s0>;
+};
+
+&cpu_b2 {
+	cpu-supply = <&vdd_cpu_big1_s0>;
+	mem-supply = <&vdd_cpu_big1_mem_s0>;
+};
+
+&crypto {
+	status = "okay";
+};
+
+&gmac1 {
+	/* Use rgmii-rxid mode to disable rx delay inside Soc */
+	phy-mode = "rgmii-rxid";
+	clock_in_out = "input";
+
+	snps,reset-gpio = <&gpio3 RK_PB7 GPIO_ACTIVE_LOW>;
+	snps,reset-active-low;
+	/* Reset time is 20ms, 100ms for rtl8211f */
+	snps,reset-delays-us = <0 20000 100000>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac1_miim
+		    &gmac1_tx_bus2
+		    &gmac1_rx_bus2
+		    &gmac1_rgmii_clk
+		    &gmac1_rgmii_bus
+            &gmac1_clkinout
+            &eth1_pins>;
+
+	tx_delay = <0x44>;
+	/* rx_delay = <0x4f>; */
+
+	phy-handle = <&rgmii_phy1>;
+	status = "okay";
+};
+
+&i2c0 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&i2c0m2_xfer>;
+
+    vdd_cpu_big0_s0: vdd_cpu_big0_mem_s0: rk8602@42 {
+        compatible = "rockchip,rk8602";
+        reg = <0x42>;
+        vin-supply = <&vcc5v0_sys>;
+        vsel-gpios = <&gpio0 RK_PA3 GPIO_ACTIVE_HIGH>;
+        regulator-compatible = "rk860x-reg";
+        regulator-name = "vdd_cpu_big0_s0";
+        regulator-min-microvolt = <550000>;
+        regulator-max-microvolt = <1050000>;
+        regulator-ramp-delay = <2300>;
+        rockchip,suspend-voltage-selector = <1>;
+        regulator-boot-on;
+        regulator-always-on;
+        regulator-state-mem {
+            regulator-off-in-suspend;
+        };
+    };
+
+    vdd_cpu_big1_s0: vdd_cpu_big1_mem_s0: rk8603@43 {
+        compatible = "rockchip,rk8603";
+        reg = <0x43>;
+        vin-supply = <&vcc5v0_sys>;
+        vsel-gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+        regulator-compatible = "rk860x-reg";
+        regulator-name = "vdd_cpu_big1_s0";
+        regulator-min-microvolt = <550000>;
+        regulator-max-microvolt = <1050000>;
+        regulator-ramp-delay = <2300>;
+        rockchip,suspend-voltage-selector = <1>;
+        regulator-boot-on;
+        regulator-always-on;
+        regulator-state-mem {
+            regulator-off-in-suspend;
+        };
+    };
+};
+
+&i2c1 {
+    status = "okay";
+        pinctrl-names = "default";
+        pinctrl-0 = <&i2c1m2_xfer>;
+
+    vdd_npu_s0: vdd_npu_mem_s0: rk8602@42 {
+        compatible = "rockchip,rk8602";
+        reg = <0x42>;
+        vin-supply = <&vcc5v0_sys>;
+        vsel-gpios = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
+        regulator-compatible = "rk860x-reg";
+        regulator-name = "vdd_npu_s0";
+        regulator-min-microvolt = <550000>;
+        regulator-max-microvolt = <950000>;
+        regulator-ramp-delay = <2300>;
+        rockchip,suspend-voltage-selector = <1>;
+        regulator-boot-on;
+        regulator-always-on;
+        regulator-state-mem {
+            regulator-off-in-suspend;
+        };
+    };
+};
+
+&mdio1 {
+	rgmii_phy1: phy@1 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <0x1>;
+        clocks = <&cru REFCLKO25M_ETH1_OUT>;
+	};
+};
+
+&pinctrl {
+    gpio-fan {
+        sys_fan_pin: sys-fan-pin {
+			rockchip,pins = <4 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+    };
+};
+
+&saradc {
+	status = "okay";
+	vref-supply = <&vcc_1v8_s0>;
+};
+
+&sdhci {
+    status = "okay";
+    bus-width = <8>;
+    no-sdio;
+    no-sd;
+    non-removable;
+    max-frequency = <200000000>;
+    mmc-hs400-1_8v;
+    mmc-hs400-enhanced-strobe;
+    full-pwr-cycle-in-suspend;
+};
+
+&tsadc {
+	status = "okay";
+};
+
+&vdd_log_s0 {
+	regulator-state-mem {
+		regulator-on-in-suspend;
+		regulator-suspend-microvolt = <750000>;
+	};
+};
+
+&wdt {
+	status = "okay";
+};
